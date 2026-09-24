@@ -1,0 +1,13 @@
+# LaTeX build files
+slides/*.aux
+slides/*.log
+slides/*.nav
+slides/*.out
+slides/*.snm
+slides/*.toc
+slides/build.log
+# Python / Jupyter
+__pycache__/
+.ipynb_checkpoints/
+# scratch
+*.tmp
