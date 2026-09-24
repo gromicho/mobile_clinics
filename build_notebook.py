@@ -9,6 +9,8 @@ code = lambda s: cells.append(nbf.v4.new_code_cell(s.strip()))
 md(r"""
 # Mobile clinic routing in Nyamira County: predicting *while* optimizing with learned constraints
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/gromicho/mobile_clinics/blob/main/mobile_clinic_routing.ipynb)
+
 This notebook illustrates the idea behind Intervention I3 of *Domain-Driven Mobile Clinic Routing with Decision Support* (Chapter 6 of Mayukh Ghosh's thesis, joint work of Mayukh Ghosh, Chintan Amrit and Joaquim Gromicho): when the demand a mobile clinic meets at one location depends on **which other locations the clinic visits**, a predict-then-optimize pipeline mis-plans. Embedding the demand model inside the optimization model through **constraint learning** (`gurobi-machinelearning`) fixes this.
 
 We use only open data and no API keys:
@@ -26,14 +28,19 @@ The narrative in one line: the **static** model promises doses it cannot deliver
 """)
 
 code(r"""
-# Colab setup: installs only what is missing. Locally, skip this cell if your environment already has the packages.
-import importlib, subprocess, sys
+# Colab setup: installs only what is missing, and fetches the cached data from the GitHub repo so the
+# OpenStreetMap download is skipped. Locally, this cell is a no-op when the packages and data/ are present.
+import importlib, os, subprocess, sys
 need = {"osmnx": "osmnx", "pandana": "pandana", "gurobipy": "gurobipy", "gurobi_ml": "gurobi-machinelearning",
         "geopandas": "geopandas", "rasterio": "rasterio", "folium": "folium", "sklearn": "scikit-learn"}
 missing = [pkg for mod, pkg in need.items() if importlib.util.find_spec(mod) is None]
 if missing:
     subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", *missing])
 print("missing packages installed:", missing or "none")
+if not os.path.isdir("data"):
+    subprocess.run(["git", "clone", "--depth", "1", "https://github.com/gromicho/mobile_clinics.git", "_repo"], check=True)
+    os.chdir("_repo")
+    print("cached data fetched from github.com/gromicho/mobile_clinics")
 """)
 
 code(r"""

@@ -1,5 +1,7 @@
 # Mobile clinic routing with learned constraints
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/gromicho/mobile_clinics/blob/main/mobile_clinic_routing.ipynb)
+
 Companion notebook to Chapter 6 of Mayukh Ghosh's PhD thesis (Domain-Driven Mobile Clinic Routing). It shows why a predict-then-optimize planner mis-plans when the demand met at one ward depends on which other wards the clinic visits, and how embedding the demand model in the optimization model (`gurobi-machinelearning`) fixes it. Both signs of spillover are shown: cannibalisation and mobilisation.
 
 - `mobile_clinic_routing.ipynb`: the executed notebook.
@@ -10,7 +12,9 @@ Companion notebook to Chapter 6 of Mayukh Ghosh's PhD thesis (Domain-Driven Mobi
 
 Locally: Python 3.12 with osmnx, pandana, geopandas, rasterio, folium, scikit-learn, gurobipy and gurobi-machinelearning. The first cell installs anything missing.
 
-Colab: upload the notebook, run all. The first cell installs the packages; `pip install gurobipy` provides a size-limited licence (2000 variables, 2000 constraints) and every model in the notebook stays at or under 1000 of each. The OSM road graph download takes 2 to 3 minutes on first run; to skip it, put `data/Nyamira_drive.graphml` and `data/Nyamira_health.geojson` in a `data/` folder next to the notebook (for example by cloning this folder from a GitHub repo).
+Colab: click the badge above and run the cells top to bottom. The first cell installs the packages and clones this repository so the cached data is used and the 2 to 3 minute OpenStreetMap download is skipped; `pip install gurobipy` provides a size-limited licence (2000 variables, 2000 constraints) and every model in the notebook stays at or under 1000 of each, with subtour cuts generated lazily outside that count.
+
+For a session, do not "Run all": the sweep and the answer table take about a minute together. Rerun only the hands-on parameter cell and the scenario cells, which take a few seconds each.
 
 ## Design choices
 
