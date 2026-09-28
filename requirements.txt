@@ -13,3 +13,4 @@ gurobipy>=12
 gurobi-machinelearning>=1.5
 nbformat
 jupyter
+openpyxl

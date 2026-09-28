@@ -30,7 +30,7 @@
   \includegraphics[width=\textwidth]{figs/routes_top.png}
   \vspace{2mm}
   \begin{block}{}
-    \centering Left: 1889 doses promised, 1331 delivered. \quad Middle: 1551 promised, 1530 delivered. \quad Why?
+    \centering Left: 1892 doses promised, 1374 delivered. \quad Middle: 1664 promised, 1621 delivered. \quad Why?
   \end{block}
 \end{frame}
 
@@ -98,7 +98,8 @@
       \midrule
       Ward boundaries & GADM 4.1, level 3 \\
       Population per ward & WorldPop 2020, 1 km, UN-adjusted \\
-      Road network, health facilities & OpenStreetMap through \texttt{osmnx} \\
+      Road network & OpenStreetMap through \texttt{osmnx} \\
+      Health facilities, geocoded & Maina et al.\ (2019), \emph{Scientific Data} 6:134, CC0 \\
       Road distances between wards & \texttt{pandana} contraction hierarchies, 20 by 20 in milliseconds \\
       Demand & simulator above, both signs of $\gamma$ \\
       Optimization & Gurobi, under the free Community Edition limit \\
@@ -106,7 +107,7 @@
     \end{tabular}
   \end{center}
   \vspace{2mm}
-  Caveat: OpenStreetMap lists only 6 health facilities in Nyamira; the Kenya Master Health Facility Registry lists far more.
+  Nyamira has 98 geocoded public facilities in this list. Only its 6 hospitals (Level 4 and above) store vaccines, so accessibility is the road distance to the nearest of those.
 \end{frame}
 
 % ---------------------------------------------------------------- learning
@@ -183,8 +184,8 @@
   \includegraphics[width=0.95\textwidth]{figs/bars.png}
   \vspace{1mm}
   \begin{itemize}
-    \item Cannibalisation: the static plan delivers 70\% of what it promises; the learned network delivers 99\% and 15\% more doses.
-    \item Mobilisation: the same doses, but the static plan drives 73 km where 53 km suffice; doses per km go from 26 to 35.
+    \item Cannibalisation: the static plan delivers 73\% of what it promises; the learned network delivers 97\% and 18\% more doses.
+    \item Mobilisation: the same doses, but the static plan drives 64 km where 52 km suffice; doses per km go from 29 to 36.
     \item The realised-to-promised ratio is a diagnostic any programme can compute after the fact.
   \end{itemize}
 \end{frame}

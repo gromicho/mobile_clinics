@@ -6,7 +6,7 @@ Companion notebook to Chapter 6 of Mayukh Ghosh's PhD thesis (Domain-Driven Mobi
 
 - `mobile_clinic_routing.ipynb`: the executed notebook.
 - `build_notebook.py`: regenerates the notebook from source cells (`py -3 build_notebook.py`, then execute with Jupyter).
-- `data/`: cached downloads (GADM wards, WorldPop raster, OSM road graph and facilities for Nyamira). Delete to re-download.
+- `data/`: cached downloads (GADM wards, WorldPop raster, OSM road graph, and the Nyamira subset of the geocoded facility list of Maina et al. 2019, Scientific Data 6:134, CC0). Delete to re-download.
 
 ## Running
 

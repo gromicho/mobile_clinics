@@ -19,7 +19,8 @@ We use only open data and no API keys:
 | --- | --- |
 | Ward boundaries (20 wards of Nyamira County, Kenya) | GADM 4.1, level 3 |
 | Population per ward | WorldPop 2020, 1 km UN-adjusted raster |
-| Road network and health facilities | OpenStreetMap via `osmnx` |
+| Road network | OpenStreetMap via `osmnx` |
+| Health facilities, geocoded | Maina et al. (2019), *Scientific Data* 6:134, public-sector master facility lists, CC0 |
 | Network distances between wards | `pandana` contraction hierarchies |
 | Demand data | a simulator with an explicit **spillover** term (both signs are shown) |
 | Optimization | Gurobi, sized to stay inside the free Community Edition limit (2000 variables and constraints) |
@@ -131,7 +132,7 @@ print(f"[boundaries + population] {time.perf_counter() - t_data:.1f} s")
 """)
 
 code(r"""
-# Roads (drive network) and health facilities from OpenStreetMap
+# Roads (drive network) from OpenStreetMap
 gpath = f"{DATA}/{COUNTY}_drive.graphml"
 with timed("road graph " + ("from cache" if os.path.exists(gpath) else "from OpenStreetMap")):
     if os.path.exists(gpath):
@@ -141,17 +142,27 @@ with timed("road graph " + ("from cache" if os.path.exists(gpath) else "from Ope
         ox.save_graphml(G, gpath)
 print("road graph:", len(G.nodes), "nodes,", len(G.edges), "edges")
 
-fpath = f"{DATA}/{COUNTY}_health.geojson"
-with timed("health facilities " + ("from cache" if os.path.exists(fpath) else "from OpenStreetMap")):
+# Health facilities: Maina et al. (2019), "A spatial database of health facilities managed by the public health
+# sector in sub Saharan Africa", Scientific Data 6:134, https://doi.org/10.6084/m9.figshare.7725374 (CC0).
+# Geocoded master facility lists; we keep the facilities that fall inside the county and cache that subset.
+fpath = f"{DATA}/{COUNTY}_facilities_maina2019.csv"
+with timed("health facilities " + ("from cache" if os.path.exists(fpath) else "from figshare")):
     if os.path.exists(fpath):
-        fac = gpd.read_file(fpath)
+        allfac = pd.read_csv(fpath)
     else:
-        fac = ox.features_from_polygon(poly, {"amenity": ["hospital", "clinic", "doctors"], "healthcare": True})
-        fac = fac[fac.geometry.notna()].copy()
-        fac["geometry"] = fac.geometry.representative_point()
-        fac = fac[[c for c in ["name", "amenity", "healthcare"] if c in fac.columns] + ["geometry"]].reset_index(drop=True)
-        fac.to_file(fpath, driver="GeoJSON")
-print("health facilities tagged in OSM:", len(fac), "(OSM coverage in rural Kenya is thin; the Kenya Master Health Facility Registry would list far more)")
+        xlsx = fetch("https://ndownloader.figshare.com/files/14379593", f"{DATA}/ssa_mfl_maina2019.xlsx")
+        mfl = pd.read_excel(xlsx, sheet_name=0)
+        mfl = mfl[(mfl["Country"].astype(str).str.strip() == "Kenya") & mfl["Lat"].notna() & mfl["Long"].notna()]
+        pts = gpd.GeoDataFrame(mfl, geometry=gpd.points_from_xy(mfl["Long"], mfl["Lat"]), crs=4326)
+        allfac = pd.DataFrame(pts[pts.within(poly)].drop(columns="geometry")).rename(
+            columns={"Facility name": "name", "Facility type": "type", "Ownership": "ownership", "Lat": "lat", "Long": "lon"})
+        allfac = allfac[["name", "type", "ownership", "lat", "lon"]].sort_values(["type", "name"]).reset_index(drop=True)
+        allfac.to_csv(fpath, index=False)
+allfac = gpd.GeoDataFrame(allfac, geometry=gpd.points_from_xy(allfac["lon"], allfac["lat"]), crs=4326)
+# Vaccines are stored at Level 4 and above, i.e. hospitals. Health centres and dispensaries (Levels 2-3) do not count.
+fac = allfac[allfac["type"].str.contains("Hospital", case=False)].reset_index(drop=True)
+print(f"facilities in {COUNTY}: {len(allfac)}, of which hospitals (Level 4+ proxy): {len(fac)}")
+print(allfac["type"].value_counts().to_string())
 """)
 
 code(r"""
@@ -179,7 +190,8 @@ code(r"""
 fig, ax = plt.subplots(figsize=(8, 8))
 wards.plot(column="pop", cmap="YlOrRd", legend=True, edgecolor="grey", linewidth=0.6, ax=ax,
            legend_kwds={"label": "population (WorldPop 2020)", "shrink": 0.6})
-fac.plot(ax=ax, color="tab:blue", marker="P", markersize=70, label="OSM health facility", zorder=3)
+allfac.plot(ax=ax, color="dimgrey", markersize=8, label="health centre, dispensary, clinic", zorder=2)
+fac.plot(ax=ax, color="tab:blue", marker="P", markersize=80, edgecolor="white", label="hospital (Level 4+)", zorder=3)
 for _, r in wards.iterrows():
     ax.annotate(r.ward, (r.lon, r.lat), fontsize=7, ha="center", va="center")
 ax.set_title(f"{COUNTY} County: wards, population and health facilities"); ax.set_axis_off(); ax.legend(loc="lower left")
@@ -197,7 +209,7 @@ with $d_{ij}$ the road distance and $R$ the spillover range. One adjacent visit 
 
 $$D_i(y) = b_i \,\bigl(1 + \gamma\, E_i(y)\bigr)\, \varepsilon_i, \qquad \varepsilon_i \sim \text{LogNormal}(0, 0.15),$$
 
-where the base demand $b_i$ grows with population, the unvaccinated share, and inaccessibility (road distance to the nearest facility). The sign of $\gamma$ is the whole point:
+where the base demand $b_i$ grows with population, the unvaccinated share, and inaccessibility (road distance to the nearest hospital, the only places that store vaccines). The sign of $\gamma$ is the whole point:
 
 - $\gamma < 0$: **cannibalisation**. People near a visited ward get vaccinated there, so a later visit to the neighbour finds less demand. This is the direction assumed in the thesis (Appendix 6.B, the overlap term).
 - $\gamma > 0$: **mobilisation**. Community health volunteers, market-day traffic and word of mouth raise turnout in wards next to a visited one.
@@ -442,7 +454,7 @@ resB.drop(columns=["order"])
 """)
 
 md(r"""
-Now the sign flips: the static planner does not know that clustered visits reinforce each other, so it under-promises and drives the same long loop as before. The learned-constraint planner clusters stops deliberately: the same doses for roughly a quarter less driving, so doses per km jump from about 26 to 35. With a capacity of `CAP` doses per visit the gain shows up in kilometres rather than in doses.
+Now the sign flips: the static planner does not know that clustered visits reinforce each other, so it under-promises and drives the same long loop as before. The learned-constraint planner clusters stops deliberately: the same doses for about a fifth less driving, so doses per km rise from about 29 to 36. With a capacity of `CAP` doses per visit the gain shows up in kilometres rather than in doses.
 """)
 
 code(r"""
@@ -559,7 +571,7 @@ pd.DataFrame(answers).set_index("experiment")
 """)
 
 md(r"""
-Reading the table. **Range:** at 5 km wards are nearly independent, so both plans deliver more and the gain is smallest. At 20 km every visit touches every ward; demand is lower for everyone, and the static model, trained on a history where exposure is almost always saturated, extrapolates badly to an exposure of zero, so its promise gap is the widest. **Stops:** with only 4 stops the static planner packs them into the dense cluster next to town, the worst possible choice under cannibalisation, so the relative gain is the largest of all; with 12 stops overlap is unavoidable for any planner and the gain settles. **Model size:** the two-unit network embeds with 240 fewer variables and captures this simple demand function just as well; with a richer demand function it would start to lag behind.
+Reading the table. **Range:** the gain is robust, between 230 and 250 doses at all three ranges. At 5 km wards interact less, so both plans deliver more; at 10 and 20 km the static plan delivers barely 72 percent of its promise, while the learned plan reroutes and keeps its promise. **Stops:** with only 4 stops the static planner packs them into the dense cluster next to town, the worst possible choice under cannibalisation, so the relative gain is the largest of all, about 70 percent; with 12 stops overlap is unavoidable for any planner and the gain shrinks. **Model size:** the two-unit network embeds with 240 fewer variables and captures this simple demand function just as well; with a richer demand function it would start to lag behind.
 """)
 
 nb["cells"] = cells
