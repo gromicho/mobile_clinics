@@ -110,6 +110,42 @@
   Nyamira has 98 geocoded public facilities in this list. Only its 6 hospitals (Level 4 and above) store vaccines, so accessibility is the road distance to the nearest of those.
 \end{frame}
 
+% ---------------------------------------------------------------- facility sources
+\begin{frame}{Same count, different facilities: why the source matters}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \includegraphics[width=\textwidth]{figs/facilities_compare.png}
+
+      \vspace{1mm}
+      \scriptsize The conclusion survives the change of source; the route and the wards it favours do not. Maina et al.\ is public sector only, from about 2018.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \scriptsize
+      \begin{tabular}{@{}lcc@{}}
+        \toprule
+        & OSM & Maina et al. \\
+        \midrule
+        Facilities in Nyamira & 6 & 98 \\
+        Used as vaccine points & 6 & 6 \\
+        Of those, real hospitals & 2 & 6 \\
+        Distinct sites & 5 & 6 \\
+        Mean road km to nearest & 9.0 & 6.8 \\
+        Worst ward, road km & 28.2 & 14.6 \\
+        \midrule
+        Static: promised, delivered & 1889, 1331 & 1892, 1374 \\
+        Learned: promised, delivered & 1551, 1530 & 1664, 1621 \\
+        \bottomrule
+      \end{tabular}
+      \vspace{1mm}
+      \begin{itemize}
+        \item OSM tags two dispensaries and a health centre as hospitals and lists one site twice.
+        \item Only one site is common to both: the county hospital in Nyamira town.
+        \item Ward accessibility rankings are unrelated, rank correlation 0.06.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
 % ---------------------------------------------------------------- learning
 \begin{frame}{Learning a demand model that contains the decision}
   Where does a training set with $y$ in it come from? Replay the history of past deployments.
