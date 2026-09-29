@@ -1,0 +1,61 @@
+{
+  "utc": "2026-09-29T09:02:56.945623+00:00",
+  "git_commit": "36c8b0b62062211a69c3b4e05ee6ba1c618895fb",
+  "working_tree_dirty": true,
+  "source_sha256": {
+    "clinic_routing.py": "ad216564b421ffdd6da0056237e5494f75e9affae014e25bf7f31a176db5a1bf",
+    "clinic_data.py": "2b350e476b3377a604ab9932b2b6b8466c7eeed20f9dac68cd5920f9e9ddbf67",
+    "build_notebook.py": "4a6017b8e7a4e0384b87916e8a09377d1337403f3c4c3b5225d9a96d8e66cfb6",
+    "requirements.txt": "d2339a5fedc30edb8e621dfc8e95e9c15f95f464f16ef2245bdaf87559a61023"
+  },
+  "input_sha256": {
+    "gadm41_KEN_3.json": "1b7761b6dec37026fadb812408dae5ba71a131653b5af1311e553b077553352b",
+    "ken_ppp_2020_1km_Aggregated_UNadj.tif": "e7be439872588684262f168e237203b19e26e72108431774f34ebeeaa87e9629",
+    "Nyamira_drive.graphml": "5c06979c6e58b669ad00cebf72b2bb22e7f344a3bf6c66127441e9c254a2f1ad",
+    "Nyamira_facilities_maina2019.csv": "bd7d68e1bda26a3fcdf7a28bbac0057dd072aae95501a25ab6067230b47460cb"
+  },
+  "cpu": "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz",
+  "physical_cores": 4,
+  "logical_cores": 8,
+  "ram_gib": 63.72928237915039,
+  "os": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.14",
+  "gurobi": "13.0.3",
+  "packages": {
+    "numpy": "2.5.3",
+    "pandas": "3.0.6",
+    "scipy": "1.18.1",
+    "scikit-learn": "1.9.1",
+    "gurobipy": "13.0.3",
+    "gurobi-machinelearning": "1.7.0",
+    "osmnx": "2.1.1",
+    "pandana": "0.8",
+    "geopandas": "1.2.0",
+    "rasterio": "1.5.1",
+    "contextily": "1.7.1",
+    "folium": "0.20.0"
+  },
+  "threads": 2,
+  "numerical_library_threads_during_fit": 1,
+  "background_load": "uncontrolled and unmeasured",
+  "gpu": "not used",
+  "timing": "Wall time: fit, model build and Gurobi solve reported separately; input loading and plotting excluded from those timings.",
+  "cold_start": "Cached geographic inputs; independent models, no imported incumbents or warm starts.",
+  "settings": {
+    "range_km": 10.0,
+    "stops": 8,
+    "hidden": [
+      8
+    ],
+    "capacity": 250.0,
+    "cost_per_km": 1.0,
+    "sigma": 0.15,
+    "periods": 1500,
+    "test_periods": 400,
+    "seed": 42,
+    "time_limit": 60.0,
+    "threads": 2,
+    "mip_gap": 1e-06,
+    "benchmark_error": 0.5
+  }
+}

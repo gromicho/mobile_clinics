@@ -1,0 +1,32 @@
+\newcommand{\ScenarioA}{
+\begin{tabular}{lrrr}\toprule Policy & Expected doses & km & Objective\\\midrule
+static linear & 1614.7 & 78.9 & 1535.8\\
+embedded linear & 1614.7 & 78.9 & 1535.8\\
+static MLP & 1541.0 & 73.1 & 1467.9\\
+embedded MLP & 1614.7 & 78.9 & 1535.8\\
+historical mean & 1614.7 & 78.9 & 1535.8\\
+benchmark & 1614.7 & 78.9 & 1535.8\\
+\bottomrule\end{tabular}
+\par\vspace{2mm}{\small Benchmark optimum interval: [1535.83, 1536.23]}
+}
+\newcommand{\ScenarioB}{
+\begin{tabular}{lrrr}\toprule Policy & Expected doses & km & Objective\\\midrule
+static linear & 1883.0 & 62.2 & 1820.8\\
+embedded linear & 1883.0 & 55.7 & 1827.3\\
+static MLP & 1883.6 & 74.1 & 1809.5\\
+embedded MLP & 1875.4 & 52.5 & 1822.9\\
+historical mean & 1883.5 & 55.5 & 1828.0\\
+benchmark & 1880.5 & 51.8 & 1828.7\\
+\bottomrule\end{tabular}
+\par\vspace{2mm}{\small Benchmark optimum interval: [1828.69, 1829.18]}
+}
+\newcommand{\TrainingExample}{
+\begin{tabular}{rrrrr}\toprule $\log$ pop & Unvaccinated & Accessibility & Exposure & Served\\\midrule
+10.42 & 0.36 & 0.48 & 0.00 & 237.27\\
+10.79 & 0.41 & 0.60 & 0.00 & 250.00\\
+10.32 & 0.49 & 1.00 & 0.00 & 250.00\\
+\bottomrule\end{tabular}
+}
+\newcommand{\RunEnvironment}{
+11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz\\[2mm]4 cores, 8 logical processors; 63.7 GiB RAM.\\[2mm]Windows-11-10.0.26200-SP0; Python 3.12.14; Gurobi 13.0.3.\\[2mm]scikit-learn 1.9.1; gurobi-machinelearning 1.7.0.\\[2mm]2 solver threads; 60 s limit; relative MIP gap 1e-06.\\[2mm]Run: 2026-09-29T09:02:56 UTC; full versions, seeds and hashes in results/environment.json.
+}

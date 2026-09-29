@@ -1,0 +1,23 @@
+[
+  {
+    "log population":10.418859155786755,
+    "unvaccinated":0.358926533879566,
+    "inaccessibility":0.482929033036918,
+    "exposure":0.0,
+    "served":237.273548159590774
+  },
+  {
+    "log population":10.793351047134276,
+    "unvaccinated":0.410421930432784,
+    "inaccessibility":0.604566482492835,
+    "exposure":0.0,
+    "served":250.0
+  },
+  {
+    "log population":10.317698742030714,
+    "unvaccinated":0.491098444090442,
+    "inaccessibility":1.0,
+    "exposure":0.0,
+    "served":250.0
+  }
+]

@@ -1,0 +1,247 @@
+\input{results.tex}
+\begin{frame}[plain,noframenumbering]
+  \titlepage
+\end{frame}
+
+\begin{frame}{A forecast can change when the plan changes}
+  \begin{itemize}
+    \item A mobile clinic chooses which wards to serve and how to travel between them.
+    \item Visits nearby may reduce demand through cannibalisation or increase it through mobilisation.
+    \item A demand forecast fixed before routing can miss this dependence.
+  \end{itemize}
+  \vspace{4mm}
+  \begin{block}{Today's question}
+    What changes when the same predictor becomes a constraint inside the routing model?
+  \end{block}
+  \vspace{2mm}
+  \small A synthetic teaching companion to Mayukh Ghosh's Chapter 6, with Chintan Amrit and Joaquim Gromicho. The outcomes shown here are simulated.
+\end{frame}
+
+\begin{frame}{One county, twenty candidate service points}
+  \begin{columns}
+    \begin{column}{.47\textwidth}
+      \begin{itemize}
+        \item Nyamira County, Kenya.
+        \item Ward centroids snapped to an OSM drive network.
+        \item An open path from Township, with at most eight serviced wards.
+        \item The teaching depot also receives service and counts as a stop.
+      \end{itemize}
+      \vspace{2mm}
+      \small Actual clinic sites and the referral hospital's coordinates would be needed for operational use.
+    \end{column}
+    \begin{column}{.53\textwidth}
+      \includegraphics[width=\textwidth,height=.73\textheight,keepaspectratio]{figs/map.png}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Data sources and what they establish}
+  \small
+  \begin{tabular}{p{.25\textwidth}p{.67\textwidth}}
+    \toprule
+    Boundaries & GADM 4.1. Downloaded for local academic use; boundary files are not redistributed.\\[2mm]
+    Population & WorldPop 2020, 1 km, UN-adjusted.\\[2mm]
+    Roads & OpenStreetMap contributors; directed shortest-path distances through Pandana.\\[2mm]
+    Facilities & Maina et al. (2019), 98 historical records; six hospital labels used as an accessibility proxy.\\[2mm]
+    Outcomes & Synthetic unvaccinated shares, demand and spillovers.\\
+    \bottomrule
+  \end{tabular}\par
+  \vspace{3mm}
+  Hospital labels do not verify cold-chain capability. The county filter excludes facilities outside Nyamira.\par
+  \vspace{2mm}
+  \weblink{https://github.com/gromicho/mobile_clinics/blob/main/DATA_SOURCES.md}{Sources, licences and provenance}
+\end{frame}
+
+\begin{frame}{Facility selection changes the accessibility proxy}
+  \centering
+  \includegraphics[width=.82\textwidth,height=.66\textheight,keepaspectratio]{figs/facilities_compare.png}\par
+  \vspace{1mm}
+  \small OSM tags and Maina hospital labels differ in coverage, classification and vintage. Neither comparison establishes current vaccine-storage capability.
+\end{frame}
+
+\begin{frame}{A bounded, set-based spillover}
+  \[
+    E_i(y)=\min\left(1,\sum_{j\ne i}e^{-\bar d_{ij}/R}y_j\right),
+    \qquad \mu_i(y)=b_i(1+\gamma E_i(y)).
+  \]
+  \begin{itemize}
+    \item Negative $\gamma$: cannibalisation. Positive $\gamma$: mobilisation.
+    \item Base demand uses population, a simulated unvaccinated share and accessibility.
+    \item The visited set changes turnout; visit order changes only travel.
+  \end{itemize}
+  \vspace{3mm}
+  This simplified mechanism has no chronological patient movement or population-conservation model.
+\end{frame}
+
+\begin{frame}{Expected service includes the capacity limit}
+  \[
+    S_i=\min(C,\mu_i\epsilon_i),\qquad
+    \epsilon_i\sim\operatorname{LogNormal}(-\sigma^2/2,\sigma).
+  \]
+  The noise has mean one. With $a=(\log(C/\mu)+\sigma^2/2)/\sigma$,
+  \[
+    h(\mu)=\mathbb E[\min(C,\mu\epsilon)]
+           =\mu\Phi(a-\sigma)+C\Phi(-a).
+  \]
+  \begin{itemize}
+    \item Train predictors of capped service, using noisy observations.
+    \item Evaluate every route with this exact expectation.
+    \item Optimise the known simulator expectation with a bounded interpolation error.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{A deliberately informative synthetic history}
+  \small
+  \TrainingExample
+  \vspace{3mm}
+  \begin{itemize}
+    \item 1500 training periods, 400 independent held-out periods.
+    \item Random deployments of zero to ten wards, including zero exposure.
+    \item Potential service at every ward, including unvisited wards.
+    \item These displayed rows come from the actual generated training data.
+  \end{itemize}
+  \vspace{2mm}
+  Real records introduce missing outcomes, capacity censoring and selective historical routing. They need a separate identification and validation strategy.
+\end{frame}
+
+\begin{frame}{The same predictor, two ways to plan}
+  \begin{tabular}{lll}
+    \toprule
+    Predictor & Static policy & Embedded policy\\
+    \midrule
+    Linear regression & Exposure fixed at zero & Exposure depends on $y$\\[2mm]
+    ReLU network & Exposure fixed at zero & Exposure depends on $y$\\
+    \bottomrule
+  \end{tabular}\par
+  \vspace{4mm}
+  \begin{itemize}
+    \item Both policies use the same fitted model and training history.
+    \item Predictions are clipped consistently to $[0,C]$.
+    \item A historical-mean forecast is an additional static baseline.
+    \item Validation uses held-out deployments, not training $R^2$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Routing with decision-dependent service}
+  \[
+    \max\ \sum_i z_i-\lambda\sum_{i\ne j}d_{ij}x_{ij},\qquad
+    0\le z_i\le Cy_i,\qquad z_i\le \widehat h_i.
+  \]
+  \begin{itemize}
+    \item $y_i$ chooses serviced wards; $x_{ij}$ chooses travel arcs.
+    \item An open path starts at Township; at most $K$ wards receive service.
+    \item With embedding, $\widehat h_i=g(f_i,E_i(y))$ changes with the plan.
+    \item The simulator benchmark approximates $h(\mu_i(y))$ from below.
+  \end{itemize}
+  \vspace{3mm}
+  Benchmark upper bound = solver bound + at most 0.5 dose-equivalent interpolation error. Route values use the exact expectation. Full path constraints are in the backup slides.
+\end{frame}
+
+\begin{frame}{Environment for these results}
+  \small
+  \RunEnvironment
+  \vspace{3mm}
+  \begin{itemize}
+    \item Model-building and solver times are recorded separately.
+    \item Cached geography; no imported incumbent or warm start.
+    \item Background load is uncontrolled and unmeasured.
+    \item These are single-machine teaching results, not a runtime benchmark.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Cannibalisation: doses, distance and objective}
+  \centering
+  \ScenarioA
+  \vspace{3mm}
+  \begin{itemize}
+    \item Compare static and embedded policies within each predictor.
+    \item More service can require more driving. Doses/km is a different metric.
+    \item The historical baseline is competitive in this synthetic setting.
+  \end{itemize}
+  \vspace{1mm}\small Synthetic outcomes; objective = expected doses minus one dose-equivalent per km.
+\end{frame}
+
+\begin{frame}{Mobilisation: a benefit is not guaranteed}
+  \centering
+  \ScenarioB
+  \vspace{3mm}
+  \begin{itemize}
+    \item A fitted model may misrepresent decision-dependent service.
+    \item Embedding does not guarantee a better decision than a careful forecast.
+    \item The benchmark interval quantifies numerical uncertainty.
+  \end{itemize}
+  \vspace{1mm}\small Synthetic outcomes; all policies use the same capacity and road costs.
+\end{frame}
+
+\begin{frame}{The selected routes}
+  \centering
+  \includegraphics[width=\textwidth,height=.83\textheight,keepaspectratio]{figs/routes.png}
+\end{frame}
+
+\begin{frame}{Sensitivity to the assumed interaction}
+  \centering
+  \includegraphics[width=.9\textwidth,height=.73\textheight,keepaspectratio]{figs/sweep.png}\par
+  \small Each strength uses matched histories. The band includes the benchmark's solver and interpolation bounds.
+\end{frame}
+
+\begin{frame}{Live demo: a prediction before each run}
+  \begin{enumerate}
+    \item Change the interaction range from 10 km to 5 or 20 km.
+    \item Change the stop budget from 8 to 4 or 12.
+    \item Reduce the network from 8 hidden units to 2, keeping its training data fixed.
+  \end{enumerate}
+  \vspace{4mm}
+  Predict expected doses, driving distance and their weighted objective separately.\par
+  \vspace{4mm}
+  The notebook also compares three independent training histories. Rerun times depend on the machine and the model; solver limits and gaps stay visible.\par
+  \vspace{3mm}
+  \weblink{https://colab.research.google.com/github/gromicho/mobile_clinics/blob/main/mobile_clinic_routing.ipynb}{Open the notebook in Colab}
+\end{frame}
+
+\begin{frame}{What would make this an operational study?}
+  \begin{itemize}
+    \item Actual service and collection locations, verified cold-chain arrangements and travel/time constraints.
+    \item A defensible model of spillover, observed and censored outcomes, and historical deployment decisions.
+    \item Held-out decision performance, geographic validation and programme-specific fairness requirements.
+  \end{itemize}
+  \vspace{4mm}
+  \begin{block}{The teaching conclusion}
+    Decisions can change the quantities we predict. Embedding makes that dependence explicit; its value still depends on the model, the data and the objective.
+  \end{block}
+  \small \weblink{https://github.com/gromicho/mobile_clinics}{Code, results, sources and slides}
+\end{frame}
+
+\pdfstringdefDisableCommands{\def\translate#1{#1}}
+\appendix
+\begin{frame}{Backup: the open-path constraints}
+  \small
+  \[
+  \begin{aligned}
+    &y_s=1,\quad \sum_{i\ne s}x_{is}=0,\quad \sum_i y_i\le K,\\
+    &\sum_{j\ne i}x_{ji}=y_i && i\ne s,\\
+    &\sum_{j\ne i}x_{ij}\le y_i && i\in N,\\
+    &\sum_{i\ne j}x_{ij}=\sum_i y_i-1,\\
+    &\sum_{i,j\in S:i\ne j}x_{ij}\le\sum_{i\in S}y_i-y_k
+      &&S\subseteq N\setminus\{s\},\ k\in S.
+  \end{aligned}
+  \]
+  The last family is generated lazily at integer incumbents. Following successor arcs from the depot identifies disconnected cycles. A one-stop depot route is feasible.
+  \vspace{3mm}
+  \weblink{https://mobook.github.io/MO-book/notebooks/04/08-traveling-salesman-problem.html}{MO-book: travelling salesman problem and lazy constraints}
+\end{frame}
+
+\begin{frame}{Backup: a bound on benchmark interpolation}
+  \small
+  Expected capped service is concave in exposure. For $\sigma>0$,
+  \[
+    \left|\frac{d^2h(b_i(1+\gamma E))}{dE^2}\right|
+       \le M_i=\frac{(b_i\gamma)^2e^{\sigma^2}}{C\sigma\sqrt{2\pi}}.
+  \]
+  A secant over width $\Delta$ underestimates by at most $M_i\Delta^2/8$.
+  Choose each ward's grid so its error is at most $\varepsilon/K$.
+  \[
+    \text{exact feasible route value}\ \le\ \text{optimal expected value}
+      \ \le\ \text{solver bound}+\varepsilon.
+  \]
+  Here $\varepsilon=0.5$ dose-equivalent. Tests check the expectation against numerical integration and small routing instances against exhaustive search.
+\end{frame}

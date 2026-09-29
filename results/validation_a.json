@@ -1,0 +1,20 @@
+[
+  {
+    "predictor":"linear",
+    "training_rows":30000,
+    "test_rows":8000,
+    "heldout_r2":0.875466534075369,
+    "heldout_mae":18.062104677541232,
+    "heldout_expected_mae":12.334403991566521,
+    "fit_seconds":0.312172000005376
+  },
+  {
+    "predictor":"MLP",
+    "training_rows":30000,
+    "test_rows":8000,
+    "heldout_r2":0.884085016594506,
+    "heldout_mae":16.858926746446141,
+    "heldout_expected_mae":9.87512068043393,
+    "fit_seconds":2.009137200002442
+  }
+]

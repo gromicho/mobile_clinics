@@ -14,3 +14,9 @@ __pycache__/
 # full facility workbook; only the county subset is versioned
 data/ssa_mfl_maina2019.xlsx
 slides/intro_new.pdf
+# GADM permits local academic use, not redistribution without permission.
+data/gadm*
+data/*.part
+build/
+.venv/
+*.egg-info/

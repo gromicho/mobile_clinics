@@ -1,0 +1,41 @@
+name: Notebook validation
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MPLBACKEND: Agg
+      REQUIRE_RESTRICTED_LICENSE: '1'
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install tested environment
+        run: python -m pip install -r requirements.txt
+      - name: Clean notebook and publication checks
+        run: |
+          python scripts/notebook_preflight.py mobile_clinic_routing.ipynb
+          python -m unittest discover -s tests -v
+      - name: Check boundary acquisition without a cache
+        run: python scripts/check_data_download.py
+      - name: Execute every cell with the restricted pip licence
+        run: python scripts/execute_notebook.py
+      - name: Validate exported benchmark bounds
+        run: python scripts/check_results.py
+      - name: Save numerical evidence only
+        uses: actions/upload-artifact@v4
+        with:
+          name: numerical-results
+          path: results/*.json
+          if-no-files-found: error
