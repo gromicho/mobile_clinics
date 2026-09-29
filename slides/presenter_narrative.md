@@ -130,6 +130,10 @@ This distinction is particularly useful for understanding the two effects. Under
 
 Embedding therefore does not mean inserting the known gamma formula into the learned policy. The learned policy contains the fitted linear model or neural network. Only the simulator benchmark uses the known expected-service relationship directly.
 
+It helps to separate what we specify from what we learn. We specify how selected wards produce exposure: the distance weights, interaction range and exposure cap are modelling assumptions. We learn how population, the unvaccinated share, hospital inaccessibility and that exposure jointly predict capped service. We fit one shared predictor across the wards for each scenario, then freeze its coefficients before routing.
+
+Hospital inaccessibility enters as a fixed input for each ward. Exposure enters as an input whose value is determined by the optimisation decisions. Thus the learned model can represent both the fixed accessibility effect and the deployment-dependent spillover effect, but it approximates their combined effect from training observations. It does not need to reproduce each factor of the simulator formula explicitly.
+
 We also include a historical-average forecast for each ward. It is a useful simple comparator: the presence of decision dependence does not tell us in advance how much we gain from modelling it explicitly.
 
 ## 9 — Routing with decision-dependent service
@@ -137,6 +141,21 @@ We also include a historical-average forecast for each ward. It is a useful simp
 The objective rewards expected service and subtracts driving cost. Here, one kilometre costs one dose-equivalent. That coefficient expresses a trade-off chosen for the example; it is not an estimated programme valuation.
 
 The binary variables select stops and travel arcs. Service must be zero at unvisited wards and cannot exceed capacity. In the embedded model, the predictor's output changes with the selected stops, so the optimiser must consider their joint effect on service and travel.
+
+The connection is a chain of constraints:
+
+$$
+y\ \longrightarrow\ E_i(y)\ \longrightarrow\
+q_i=g(\log P_i,u_i,a_i,E_i)\ \longrightarrow\
+\widehat h_i=\max\{0,q_i\},\qquad
+0\le z_i\le Cy_i,\quad z_i\le\widehat h_i.
+$$
+
+The prediction q is a solver variable, but the optimiser cannot choose it freely: the fitted predictor's equations determine its value from the inputs. Selecting another ward can change exposure, which changes the permitted prediction and hence the service we can claim in the objective. The optimiser considers that service effect together with the travel consequences.
+
+For a selected ward, the objective pushes service up to the smaller of capacity and its nonnegative prediction. For an unselected ward, service is zero. For example, a prediction of 180 permits 180 doses at a visited ward; a prediction of 270 permits only 250; and a negative prediction permits zero. These are illustrations of the constraints, not additional fitted results.
+
+This is why we call them learned constraints: the coefficients determining the service bound come from a fitted model. We are inserting the predictor's equations into the optimisation problem, so the solver can reason about their consequences while choosing the route. The static version computes those bounds once at zero exposure and keeps them constant.
 
 There are now three roles for distance. Distance to hospitals helps set fixed base demand. Distance between selected wards determines exposure and its effect on demand. Distance along the chosen travel arcs incurs a cost. Serving a poorly connected ward can therefore offer higher simulated need while also requiring more driving; selecting nearby wards can shorten travel while changing their turnout. The objective weighs these consequences together.
 
@@ -239,6 +258,36 @@ Taking the maximum with zero handles negative predictor outputs consistently. Co
 Embedding includes the preprocessing. We first apply the means and scales estimated during training to all four inputs, including exposure. The linear model is then an affine equation.
 
 For the default neural network, eight affine expressions feed eight ReLU units. Their nonnegative outputs feed a final affine prediction, which is clipped below at zero. All weights, intercepts and scaling constants are fixed before routing begins. We are optimising the deployment with a trained network, not training a network inside the routing solver.
+
+To see exactly where the effects enter, write the input and its standardisation as
+
+$$
+v_i=(\log P_i,u_i,a_i,E_i),\qquad
+t_{i\ell}=\frac{v_{i\ell}-m_\ell}{s_\ell},\quad \ell=1,\ldots,4.
+$$
+
+The fitted means m and scales s are constants. The first three input values are fixed for each ward; only the fourth changes with the selected deployment. For linear regression the prediction equation is
+
+$$
+q_i=\beta_0+\beta_1t_{i1}+\beta_2t_{i2}
+              +\beta_3t_{i3}+\beta_4t_{i4}.
+$$
+
+The third coefficient represents an additive association with hospital inaccessibility, holding other inputs fixed. The fourth represents an additive association with exposure. Before output clipping, a change in exposure changes the prediction at the constant rate beta four divided by the fourth input scale. This linear model cannot reproduce all the interactions and capacity effects of the simulator, which is one reason to examine a more flexible predictor.
+
+For the neural network the corresponding equations are
+
+$$
+r_{ih}=\max\left\{0,c_h+\sum_{\ell=1}^4B_{h\ell}t_{i\ell}\right\},
+\quad h=1,\ldots,8,\qquad
+q_i=c_0+\sum_{h=1}^8\alpha_h r_{ih}.
+$$
+
+Each hidden unit combines all four inputs before applying its ReLU. As exposure changes, some units can switch between zero and their affine expression. The resulting prediction is piecewise linear, and its response to exposure can differ across wards because their fixed inputs differ. The equations use the same learned coefficients for every ward.
+
+In the implementation, `add_predictor_constr(model, predictor, inputs, outputs)` inserts the fitted scikit-learn pipeline, including its scaler, into Gurobi. We fix each ward's first three input variables to its observed or simulated feature values and equate its fourth input variable to exposure. Separate exact min constraints define capped exposure, max constraints impose nonnegative predictions, and the service inequalities impose selection and capacity. The library handles the predictor equations and the solver handles their mixed-integer representation.
+
+Neither predictor is constrained to be monotone in exposure. Training on cannibalisation data may teach a decreasing response and training on mobilisation data may teach an increasing response, but those signs are not guaranteed everywhere. The optimiser sees the fitted response, including its errors. We fit by prediction error before routing; we do not train the coefficients to maximise route quality. That is why held-out prediction checks and evaluation of the final decisions both matter.
 
 Gurobi's general constraints represent the ReLU and exposure relations exactly through mixed-integer machinery. These equations describe the default one-hidden-layer network used in the displayed experiments; the software also permits other configured layer sizes.
 
