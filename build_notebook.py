@@ -525,16 +525,33 @@ sweep.pivot(index="gamma", columns="variant", values=["realised", "km"]).round(0
 code(r"""
 # Interactive map of scenario A (static vs learned MLP). Open the notebook in Jupyter or Colab to interact.
 import folium
-mp = folium.Map(location=[wards.lat.mean(), wards.lon.mean()], zoom_start=11, tiles="OpenStreetMap")   # OSM tiles need no API key
+# The map does not depend on any tile server: tile servers refuse requests from notebook viewers that send no
+# referrer (OpenStreetMap answers "Access blocked", others ask for a key). The default background is blank, and
+# the geography comes from our own data: wards, main roads from the cached OSM graph, hospitals and routes.
+# An Esri basemap can be switched on in the layer control when the viewer allows it.
+BLANK = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+mp = folium.Map(location=[wards.lat.mean(), wards.lon.mean()], zoom_start=11, tiles=None)
+folium.TileLayer(tiles=BLANK, attr="GADM, WorldPop, OpenStreetMap contributors, Maina et al. 2019", name="No basemap (offline)").add_to(mp)
+folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+                 attr="Tiles &copy; Esri", name="Esri light gray (online)", show=False).add_to(mp)
 folium.Choropleth(geo_data=wards.__geo_interface__, data=wards, columns=["ward", "pop"], key_on="feature.properties.ward",
-                  fill_color="YlOrRd", fill_opacity=0.5, line_opacity=0.4, legend_name="population").add_to(mp)
+                  fill_color="YlOrRd", fill_opacity=0.5, line_opacity=0.4, legend_name="population", name="population per ward").add_to(mp)
+folium.GeoJson(wards[["ward", "pop", "km_to_facility", "geometry"]].round(1), name="ward names (hover)",
+               style_function=lambda f: {"fillOpacity": 0, "weight": 0},
+               tooltip=folium.GeoJsonTooltip(fields=["ward", "pop", "km_to_facility"], aliases=["ward", "population", "km to hospital"])).add_to(mp)
+main = edges[edges["highway"].astype(str).str.contains("trunk|primary|secondary|tertiary")]
+folium.GeoJson(main[["geometry"]].assign(geometry=main.geometry.simplify(0.0005)), name="main roads",
+               style_function=lambda f: {"color": "#555555", "weight": 1.2, "opacity": 0.7}).add_to(mp)
 for _, f in fac.iterrows():
-    folium.CircleMarker([f.geometry.y, f.geometry.x], radius=5, color="blue", fill=True, tooltip=str(f.get("name", "facility"))).add_to(mp)
+    folium.CircleMarker([f.geometry.y, f.geometry.x], radius=5, color="blue", fill=True, tooltip=str(f.get("name", "hospital"))).add_to(mp)
 for variant, color in [("static (I2)", "red"), ("learned MLP (I3)", "green")]:
     r = resA[resA.variant == variant].iloc[0]; p = road_path(r.order)
-    folium.PolyLine([(y_, x_) for x_, y_ in p], color=color, weight=4, opacity=0.8, tooltip=f"{variant}: {r.km} km, realised {r.realised:.0f} doses").add_to(mp)
+    layer = folium.FeatureGroup(name=f"route: {variant}")
+    folium.PolyLine([(y_, x_) for x_, y_ in p], color=color, weight=4, opacity=0.8, tooltip=f"{variant}: {r.km} km, realised {r.realised:.0f} doses").add_to(layer)
     for k, i in enumerate(r.order):
-        folium.Marker([wards.lat[i], wards.lon[i]], icon=folium.DivIcon(html=f'<div style="color:{color};font-weight:bold">{k}</div>')).add_to(mp)
+        folium.Marker([wards.lat[i], wards.lon[i]], icon=folium.DivIcon(html=f'<div style="color:{color};font-weight:bold">{k}</div>')).add_to(layer)
+    layer.add_to(mp)
+folium.LayerControl(collapsed=False).add_to(mp)
 mp
 """)
 
