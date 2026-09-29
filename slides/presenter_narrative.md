@@ -62,7 +62,7 @@ We represent nearby mobile-clinic activity through an exposure measure:
 $$
 \bar d_{ij}=\frac{d_{ij}+d_{ji}}{2},\qquad
 w_{ij}=e^{-\bar d_{ij}/R}\ (i\ne j),\qquad
-E_i(y)=\min\left\{1,\sum_{j\ne i}w_{ij}y_j\right\}.
+E_i(y)=\min\left(1,\sum_{j\ne i}w_{ij}y_j\right).
 $$
 
 Here, y sub j is one if ward j is selected for service and zero otherwise. A selected ward contributes to exposure at other wards, with a weight that decreases exponentially with their road distance. We average the two directed distances for this interaction, although the driving cost still uses the actual direction of travel. A ward does not contribute to its own exposure.
@@ -94,10 +94,10 @@ Demand is uncertain, and a stop can serve at most 250 people. We add multiplicat
 Putting the pieces together, potential service at ward i is
 
 $$
-S_i(y)=\min\left\{250,\;
+S_i(y)=\min\left(250,\;
 \underbrace{0.02P_i u_i(0.5+a_i)}_{\text{base demand}}
 \underbrace{(1+\gamma E_i(y))}_{\text{effect of nearby visits}}
-\underbrace{\epsilon_i}_{\text{random variation}}\right\}.
+\underbrace{\epsilon_i}_{\text{random variation}}\right).
 $$
 
 Read that expression from left to right inside the capacity limit: population and hospital access establish base demand; the chosen deployment changes it through exposure; random variation changes turnout on the day; and capacity limits how many people can be served. We count this potential service in the route's total only when the ward is selected.
@@ -145,9 +145,9 @@ The binary variables select stops and travel arcs. Service must be zero at unvis
 The connection is a chain of constraints:
 
 $$
-y\ \longrightarrow\ E_i(y)\ \longrightarrow\
-q_i=g(\log P_i,u_i,a_i,E_i)\ \longrightarrow\
-\widehat h_i=\max\{0,q_i\},\qquad
+y\quad\longrightarrow\quad E_i(y)\quad\longrightarrow\quad
+q_i=g(\log P_i,u_i,a_i,E_i)\quad\longrightarrow\quad
+\widehat h_i=\max(0,q_i),\qquad
 0\le z_i\le Cy_i,\quad z_i\le\widehat h_i.
 $$
 
@@ -278,7 +278,7 @@ The third coefficient represents an additive association with hospital inaccessi
 For the neural network the corresponding equations are
 
 $$
-r_{ih}=\max\left\{0,c_h+\sum_{\ell=1}^4B_{h\ell}t_{i\ell}\right\},
+r_{ih}=\max\left(0,c_h+\sum_{\ell=1}^4B_{h\ell}t_{i\ell}\right),
 \quad h=1,\ldots,8,\qquad
 q_i=c_0+\sum_{h=1}^8\alpha_h r_{ih}.
 $$
