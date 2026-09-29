@@ -1,0 +1,6 @@
+*.pdf binary
+*.png binary
+*.tif binary
+*.xlsx binary
+*.zip binary
+*.ipynb text eol=lf
