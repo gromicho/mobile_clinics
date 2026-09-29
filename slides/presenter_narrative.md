@@ -6,6 +6,8 @@
 
 Today I want to explore a connection between prediction and optimisation: what happens when our decisions change the quantities we are trying to predict?
 
+The central idea is to put the fitted predictor into the optimisation model as constraints. The visit decisions, represented by y, determine an input to the predictor. Its equations then determine the service prediction consistent with those decisions. We choose the route and enforce its predicted consequences in the same model.
+
 We will use mobile clinic routing as the example. This teaching companion draws on the ideas in Chapter 6 of Mayukh Ghosh's thesis, in joint work with Chintan Amrit and myself. The geography is real, but the vaccination outcomes are simulated. That gives us a controlled setting in which to examine the modelling choices and compare the resulting decisions.
 
 ## 1 — A forecast can change when the plan changes
@@ -14,13 +16,15 @@ Imagine deciding where a mobile clinic should go tomorrow. A familiar approach i
 
 But attendance may depend on the route we choose. Two nearby visits might compete for the same patients. Alternatively, several visits in an area might increase awareness and participation. In either case, the forecast belongs to a particular deployment plan.
 
-Our question is whether we make better decisions when the optimiser can see that dependence. We will take the same fitted predictor and use it in two ways: first as a forecast made before routing, and then as a relationship inside the routing model.
+Our question is whether we make better decisions when the optimiser can see that dependence. We will take the same fitted predictor and use it in two ways: first to produce fixed forecasts before routing, and then as equations whose inputs depend on the visit decisions y. In the second case, changing y changes the predictions that the constraints permit. That is the idea to keep in mind throughout the presentation.
 
 ## 2 — One county, twenty candidate service points
 
 Here is Nyamira County in Kenya. We use its twenty wards as candidate service areas, with a representative point for each ward snapped to the road network.
 
 The clinic starts in Township and can serve at most eight wards. The route is an open path: we do not require a return to the starting point. In this teaching model, the starting ward receives service and counts as one of the eight stops.
+
+For each ward, y is a binary decision: one means that we visit and serve it, and zero means that we do not. These same visit variables will enter both the routing constraints and the predictor constraints. The travel variables x determine how we connect the selected wards.
 
 These choices make the example small enough to inspect and experiment with. For an operational study we would replace the representative points with actual service sites and identify the real collection location. That would also let us model the travel and handling requirements more faithfully.
 
@@ -85,6 +89,8 @@ If base demand is 200 and exposure is 0.6, cannibalisation gives 200 times 0.7, 
 
 We run these as separate scenarios, each with one common gamma across the county. The simulation does not model both mechanisms simultaneously or estimate their strength from patient records. Awareness and competition motivate the signs; the mathematical mechanism is the exposure multiplier.
 
+The link to optimisation is the y inside the exposure formula. Exposure is determined by which other wards we choose to visit. When we embed a predictor, we impose this exposure relationship as constraints and feed the resulting exposure variable into the fitted model.
+
 This is a deliberately simple mechanism. The set of selected wards determines exposure. Changing their order changes driving distance but leaves demand unchanged. We are therefore modelling a deployment effect, without specifying a chronological process in which individual patients move between stops.
 
 ## 6 — Expected service includes the capacity limit
@@ -126,6 +132,10 @@ This table is the central comparison. We fit a linear predictor and a small ReLU
 
 The static policy evaluates the predictor at zero exposure before solving the route. The embedded policy lets exposure respond to the selected wards during optimisation. Both use the same treatment of negative predictions and the same service capacity.
 
+*Emphasise the distinction between fixed coefficients and variable inputs.*
+
+The fitted coefficients are fixed in both versions. In the embedded version, the input exposure and the output prediction are variables linked by predictor equations. For linear regression, fixing a ward's other features leaves an equation of the form q equals a ward-specific constant plus a learned coefficient times exposure. For a ReLU network, it leaves affine equations and maximum-with-zero constraints. Both formulations connect the prediction to y through exposure, and both are enforced inside the routing optimisation.
+
 This distinction is particularly useful for understanding the two effects. Under cannibalisation, zero exposure describes the absence of competing visits. Under mobilisation, it describes the absence of an attendance boost from nearby visits. The static policy keeps those forecasts fixed even when its route selects nearby wards. The embedded policy updates exposure within the model. Its response is whatever the fitted predictor has learned, which may differ from the simulator's exact response.
 
 Embedding therefore does not mean inserting the known gamma formula into the learned policy. The learned policy contains the fitted linear model or neural network. Only the simulator benchmark uses the known expected-service relationship directly.
@@ -151,7 +161,9 @@ q_i=g(\log P_i,u_i,a_i,E_i)\quad\longrightarrow\quad
 0\le z_i\le Cy_i,\quad z_i\le\widehat h_i.
 $$
 
-The prediction q is a solver variable, but the optimiser cannot choose it freely: the fitted predictor's equations determine its value from the inputs. Selecting another ward can change exposure, which changes the permitted prediction and hence the service we can claim in the objective. The optimiser considers that service effect together with the travel consequences.
+The equality q equals g is essential. The prediction q is a solver variable, but the optimiser cannot increase it freely to improve the objective: the predictor constraints require it to equal the fitted model's output for that deployment. Selecting ward j can change exposure at several other wards, changing their required predictions and the service available in the objective. Its own service is enabled by y sub j through the capacity bound.
+
+The solver handles y, exposure, predictor auxiliaries, predictions and service as one coupled optimisation problem. It is not an outer loop that picks a completed route and then asks a separate prediction service to score it. The route's predicted consequences are already part of its feasible constraints.
 
 For a selected ward, the objective pushes service up to the smaller of capacity and its nonnegative prediction. For an unselected ward, service is zero. For example, a prediction of 180 permits 180 doses at a visited ward; a prediction of 270 permits only 250; and a negative prediction permits zero. These are illustrations of the constraints, not additional fitted results.
 
@@ -171,6 +183,8 @@ The point is reproducibility. These are teaching results from one machine, with 
 
 *Point first to the two MLP rows, then to the linear and historical rows.*
 
+For each static–embedded pair, the fitted predictor is the same. What changes is whether its service bounds remain fixed or are linked to the visit variables y. Read the result as a comparison between those two uses of the predictor.
+
 Here gamma is minus 0.5. Increasing exposure reduces mean demand, by at most half of base demand at full exposure. This gives the model an incentive to avoid overlapping service opportunities, but that incentive competes with travel cost, differences in base demand and the capacity limit. It does not imply that the best route always selects the most widely separated wards.
 
 With negative spillover, the static neural-network policy serves about 1541 expected doses and drives 73.1 kilometres. Embedding that same network changes the plan to about 1614.7 doses and 78.9 kilometres. The objective rises from 1467.9 to 1535.8. We gain service and also do more driving.
@@ -180,6 +194,8 @@ Now look at the other rows. The static linear policy, the embedded linear policy
 So embedding helps this neural-network comparison, but it is not necessary to obtain a very good decision in this particular instance. We should explain the pattern the experiment produces, rather than assume that the most elaborate policy must win.
 
 ## 12 — Mobilisation: a benefit is not guaranteed
+
+Again, the embedded policy uses predictor constraints depending on y. The positive effect is represented by what the predictor learned from mobilisation data; the routing model does not impose a separate rule requiring its predictions to increase with exposure.
 
 Here gamma is plus 0.5. Exposure increases mean demand, by up to half of base demand at full exposure. Nearby visits can reinforce one another, and a geographically compact selection may also save travel. However, the exposure cap and the 250-dose service cap limit the benefit of additional nearby visits. This model does not reward clustering indefinitely.
 
@@ -217,7 +233,7 @@ For the same selected wards, reducing R decreases the distance weights and can r
 
 Next, change the maximum number of stops. We are allowing more stops, not requiring them. For the exact benchmark, expanding the feasible set cannot reduce the optimal weighted objective, although the selected route and its distance can change.
 
-Finally, reduce the neural network from eight hidden units to two while keeping its training history fixed. This changes the fitted approximation and the optimisation formulation. A smaller predictor may be easier to embed, but the relevant question is how its errors affect the decisions.
+Finally, reduce the neural network from eight hidden units to two while keeping its training history fixed. This changes the fitted approximation and the optimisation formulation: fewer hidden units mean fewer ReLU relations to enforce for each ward. The visit variables still feed the predictor through exposure. A smaller predictor may be easier to embed, but the relevant question is how its errors affect the decisions.
 
 The notebook also repeats the comparison across three training-history seeds. Those repetitions help distinguish a pattern in this example from a result tied to one generated history.
 
@@ -227,7 +243,7 @@ To use this approach operationally, we would need actual service and collection 
 
 There may be programme objectives that this example does not represent, such as equity, continuity of service or reaching particular groups. Those belong in the problem definition and evaluation.
 
-The idea I would like you to take away is that a prediction can be part of the decision model. When a decision changes what will happen, we can represent that relationship explicitly. Whether doing so improves the decision is an empirical and modelling question, which we should answer with matched comparisons, credible data and a clearly stated objective.
+The idea I would like you to take away is this: a fitted predictor can become a set of constraints whose inputs depend on our decisions. Here, y determines exposure, the regression or ReLU equations determine the corresponding prediction, and that prediction bounds service in the objective. The optimiser therefore chooses visits while accounting for their predicted consequences. Whether this improves decisions is something we assess with matched comparisons, credible data and a clearly stated objective.
 
 ## Backup 17 — Model notation and inputs
 
@@ -275,6 +291,21 @@ $$
 
 The third coefficient represents an additive association with hospital inaccessibility, holding other inputs fixed. The fourth represents an additive association with exposure. Before output clipping, a change in exposure changes the prediction at the constant rate beta four divided by the fourth input scale. This linear model cannot reproduce all the interactions and capacity effects of the simulator, which is one reason to examine a more flexible predictor.
 
+To make the dependence on y explicit, absorb the fixed features and scaler offsets into a constant kappa for each ward, and put theta equal to beta four divided by its input scale. Then the regression constraint is
+
+$$
+q_i=\kappa_i+\theta E_i,\qquad
+E_i=\min\left(1,\sum_{j\ne i}w_{ij}y_j\right).
+$$
+
+The first equation is a linear equality in the solver variables q and E. The second links E to the binary visit variables through an exact capped-sum constraint. On the part where exposure is below one, substitution gives
+
+$$
+q_i=\kappa_i+\sum_{j\ne i}\theta w_{ij}y_j.
+$$
+
+This shows the learned coefficients acting directly on the visit decisions. If selecting another ward adds weight w without reaching the exposure cap, it changes the raw prediction by theta times w. Once exposure reaches one, additional visits do not change this ward's prediction. The regression equation itself is linear; the exposure cap and prediction clipping add piecewise-linear relations to the complete routing model.
+
 For the neural network the corresponding equations are
 
 $$
@@ -284,6 +315,27 @@ q_i=c_0+\sum_{h=1}^8\alpha_h r_{ih}.
 $$
 
 Each hidden unit combines all four inputs before applying its ReLU. As exposure changes, some units can switch between zero and their affine expression. The resulting prediction is piecewise linear, and its response to exposure can differ across wards because their fixed inputs differ. The equations use the same learned coefficients for every ward.
+
+We can make the same substitution for the network. After absorbing fixed features and scaler offsets, each hidden unit has a ward-specific constant A and an exposure coefficient D:
+
+$$
+\eta_{ih}=A_{ih}+D_h E_i,\qquad
+r_{ih}=\max(0,\eta_{ih}),\qquad
+q_i=c_0+\sum_h\alpha_h r_{ih}.
+$$
+
+These are constraints on auxiliary variables, with trained coefficients held fixed. Because E is determined by y, changing the visited set can change a unit's affine input and can move it across zero. An active unit passes its affine value through; an inactive unit outputs zero. This lets the learned response to exposure have different slopes in different input regions. The solver must enforce the correct region for the selected deployment.
+
+*Optional technical explanation of an exact mixed-integer ReLU representation.*
+
+For a unit with valid finite bounds L below zero and U above zero on its affine input eta, introduce a binary activation variable delta. The following constraints encode the ReLU exactly:
+
+$$
+r\ge0,\qquad r\ge\eta,\qquad
+r\le U\delta,\qquad r\le\eta-L(1-\delta).
+$$
+
+When delta is zero, these constraints force r to zero and eta to be nonpositive. When delta is one, they force r to equal eta and eta to be nonnegative. Units whose input is always nonnegative or always nonpositive can be simplified. This is a standard equivalent formulation for explaining the mechanism; the notebook delegates the ReLU encoding to the library's Gurobi max constraints instead of manually adding these four inequalities. The activation variables are auxiliary variables, distinct from the visit variables y.
 
 In the implementation, `add_predictor_constr(model, predictor, inputs, outputs)` inserts the fitted scikit-learn pipeline, including its scaler, into Gurobi. We fix each ward's first three input variables to its observed or simulated feature values and equate its fourth input variable to exposure. Separate exact min constraints define capped exposure, max constraints impose nonnegative predictions, and the service inequalities impose selection and capacity. The library handles the predictor equations and the solver handles their mixed-integer representation.
 
