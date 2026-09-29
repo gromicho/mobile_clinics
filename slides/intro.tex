@@ -12,8 +12,8 @@
 \setbeamertemplate{footline}[frame number]
 \setbeamerfont{frametitle}{series=\bfseries}
 
-\title{Predicting while optimizing}
-\subtitle{Mobile clinic routing with learned constraints}
+\title{Analytics for a Better World}
+\subtitle{Predicting while optimizing: mobile clinic routing with learned constraints}
 \author{Joaquim Gromicho \\[1mm] {\small joint work with Mayukh Ghosh and Chintan Amrit}}
 \institute{Amsterdam Business School, University of Amsterdam}
 \date{Chapter 6 of Mayukh Ghosh's PhD thesis, \emph{Domain Driven Analytics}}
@@ -250,16 +250,21 @@
 \end{frame}
 
 % ---------------------------------------------------------------- hands-on
-\begin{frame}{Hands-on: ten minutes, one experiment each}
-  Open the notebook (link on the board). Outputs are already there; change one parameter, rerun the scenario cell.
+\begin{frame}{Live demo: you predict, I run}
+  The notebook is live in Colab. For each experiment: first your prediction by show of hands, then the rerun.
   \vspace{2mm}
   \begin{enumerate}
-    \item \textbf{Range.} Set \texttt{R\_KM} to 5, then 20. Does the gap between static and learned grow or shrink? Why?
-    \item \textbf{Stops.} Set \texttt{K\_STOPS} to 4, then 12. At which end can the static planner ignore spillover?
-    \item \textbf{Model size.} Set \texttt{hidden\_layer\_sizes} to \texttt{(2,)}. Watch the variable count and the realised doses. What did you trade?
+    \item \textbf{Range.} \texttt{R\_KM} from 10 to 5, then 20. Does the gap between static and learned grow or shrink?
+    \item \textbf{Stops.} \texttt{K\_STOPS} from 8 to 4, then 12. At which end can the static planner ignore spillover?
+    \item \textbf{Model size.} \texttt{HIDDEN} from 8 units to 2. What happens to the model size, and to the doses delivered?
   \end{enumerate}
   \vspace{3mm}
-  Each rerun takes under a minute: data is cached, every solve is about a second.
+  Each rerun takes a few seconds: data is cached, every solve is about a second.
+
+  \vspace{3mm}
+  \begin{block}{Try it yourself, now or later}
+    \centering \url{https://github.com/gromicho/mobile_clinics}\\ Open in Colab from the README. No installation needed.
+  \end{block}
 \end{frame}
 
 % ---------------------------------------------------------------- debrief

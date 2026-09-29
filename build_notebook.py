@@ -78,9 +78,9 @@ def timed(label):
 """)
 
 md(r"""
-## Hands-on parameters
+## Parameters for the live demo, and for your own experiments
 
-Change **one** value below, run this cell, then rerun the scenario cells in Section 4 (they rebuild what depends on these values). Suggested experiments:
+Change **one** value below, run this cell, then rerun the scenario cells in Section 4 (they rebuild what depends on these values). Predict the outcome before you run. Suggested experiments:
 
 1. **Range.** `R_KM = 5`, then `20`. Does the gap between static and learned grow or shrink? Why?
 2. **Stops.** `K_STOPS = 4`, then `12`. At which end can the static planner get away with ignoring spillover?
