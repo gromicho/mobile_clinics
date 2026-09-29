@@ -22,4 +22,6 @@ For a session, do not "Run all": the sweep and the answer table take about a min
 - Road distances between ward centroids from pandana contraction hierarchies on the osmnx drive graph; no API keys.
 - Demand is simulated with an explicit exposure term, and the training set is a replayed history of random deployments, which makes the "decision variable inside the predictor" step explicit.
 - Objective: expected doses delivered minus a per-km driving cost, at most 8 stops, open path from Nyamira Township.
+- Maps are static figures with an Esri topographic background fetched by contextily when the cell runs, so they display in any viewer, on GitHub and in the slides. Public OpenStreetMap and Carto tiles are not used: the first blocks automated and referrer-less requests, the second now requires an API key. The interactive map in the last cell is optional and draws only cached data.
+- `slides/make_facilities_compare.py` regenerates the figure that compares OpenStreetMap facility tags with Maina et al.
 - Subtours are eliminated with Dantzig-Fulkerson-Johnson cuts generated lazily in a Gurobi callback, so they add nothing to the model size the Community Edition checks.

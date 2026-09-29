@@ -14,3 +14,4 @@ gurobi-machinelearning>=1.5
 nbformat
 jupyter
 openpyxl
+contextily>=1.6

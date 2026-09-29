@@ -33,7 +33,8 @@ code(r"""
 # OpenStreetMap download is skipped. Locally, this cell is a no-op when the packages and data/ are present.
 import importlib, os, subprocess, sys
 need = {"osmnx": "osmnx", "pandana": "pandana", "gurobipy": "gurobipy", "gurobi_ml": "gurobi-machinelearning",
-        "geopandas": "geopandas", "rasterio": "rasterio", "folium": "folium", "sklearn": "scikit-learn"}
+        "geopandas": "geopandas", "rasterio": "rasterio", "folium": "folium", "sklearn": "scikit-learn",
+        "contextily": "contextily", "openpyxl": "openpyxl"}
 missing = [pkg for mod, pkg in need.items() if importlib.util.find_spec(mod) is None]
 if missing:
     subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", *missing])
@@ -50,6 +51,7 @@ warnings.filterwarnings("ignore")
 import numpy as np, pandas as pd, geopandas as gpd
 import osmnx as ox, pandana as pdna, rasterio, rasterio.mask
 import matplotlib.pyplot as plt
+import contextily as cx
 import gurobipy as gp
 from gurobipy import GRB
 from gurobi_ml import add_predictor_constr
@@ -67,6 +69,14 @@ rng = np.random.default_rng(SEED)
 CAP = 250.0                 # doses the clinic can administer per visit-day
 DOSE_PER_KM = 1.0           # trade-off: one extra km of driving is worth one dose
 START_WARD = "Township"     # Nyamira town, county referral hospital: vaccines are collected here
+
+def basemap(ax, zoom=11):
+    # Background tiles are downloaded by Python and baked into the figure, so whatever displays the notebook
+    # never contacts a tile server. Without internet the figure is simply drawn without a background.
+    try:
+        cx.add_basemap(ax, crs="EPSG:4326", source=cx.providers.Esri.WorldTopoMap, zoom=zoom, attribution_size=5)
+    except Exception as e:
+        print("basemap skipped:", type(e).__name__)
 
 from contextlib import contextmanager
 @contextmanager
@@ -188,8 +198,9 @@ wards[["subcounty", "ward", "pop", "km_to_facility"]].round(1)
 
 code(r"""
 fig, ax = plt.subplots(figsize=(8, 8))
-wards.plot(column="pop", cmap="YlOrRd", legend=True, edgecolor="grey", linewidth=0.6, ax=ax,
+wards.plot(column="pop", cmap="YlOrRd", alpha=0.6, legend=True, edgecolor="grey", linewidth=0.6, ax=ax,
            legend_kwds={"label": "population (WorldPop 2020)", "shrink": 0.6})
+basemap(ax)
 allfac.plot(ax=ax, color="dimgrey", markersize=8, label="health centre, dispensary, clinic", zorder=2)
 fac.plot(ax=ax, color="tab:blue", marker="P", markersize=80, edgecolor="white", label="hospital (Level 4+)", zorder=3)
 for _, r in wards.iterrows():
@@ -483,7 +494,8 @@ fig, axes = plt.subplots(2, 3, figsize=(16, 10))
 for row, (df, gname) in enumerate([(resA, "cannibalisation"), (resB, "mobilisation")]):
     for col, variant in enumerate(["static (I2)", "learned MLP (I3)", "oracle"]):
         ax = axes[row, col]; r = df[df.variant == variant].iloc[0]
-        wards.plot(column="pop", cmap="YlOrRd", alpha=0.6, edgecolor="grey", linewidth=0.5, ax=ax)
+        wards.plot(column="pop", cmap="YlOrRd", alpha=0.45, edgecolor="grey", linewidth=0.5, ax=ax)
+        basemap(ax)
         p = road_path(r.order); ax.plot(p[:, 0], p[:, 1], color="black", linewidth=2)
         ax.scatter(wards.lon[r.order], wards.lat[r.order], s=60, color="tab:blue", zorder=3)
         ax.scatter(wards.lon[start], wards.lat[start], s=120, marker="*", color="red", zorder=4)
@@ -492,7 +504,7 @@ for row, (df, gname) in enumerate([(resA, "cannibalisation"), (resB, "mobilisati
         ax.set_title(f"{gname}: {variant}\n{r.stops} stops, {r.km:.0f} km, promised {r.promised:.0f}, realised {r.realised:.0f}", fontsize=10)
         ax.set_axis_off()
 plt.tight_layout(); plt.show()
-print(f"[road paths for 6 routes + figure] {time.perf_counter() - t_fig:.1f} s")
+print(f"[road paths for 6 routes + basemap + figure] {time.perf_counter() - t_fig:.1f} s")
 """)
 
 md(r"""
@@ -520,6 +532,12 @@ for ax, col, ylab in [(axes[0], "realised", "doses realised per planning period"
 axes[0].set_title("Doses: the gap is on the cannibalisation side"); axes[1].set_title("Objective: the gap is on both sides")
 plt.tight_layout(); plt.show()
 sweep.pivot(index="gamma", columns="variant", values=["realised", "km"]).round(0)
+""")
+
+md(r"""
+### Optional: interactive map
+
+The static figures above carry the message and render everywhere. This last map is for exploring: switch the static and the learned route on and off in the layer control. It draws only our own cached data, so it works without any tile server. Skip it in a live session unless you want the toggle.
 """)
 
 code(r"""
