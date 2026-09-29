@@ -36,6 +36,10 @@ writes its executed copy under ignored `build/`, full-precision results under
 and [the slide PDF](slides/intro.pdf) provide a reviewable snapshot. The executed
 notebook is not published as a data bundle.
 
+The slides include the complete model in their backup section. A
+[slide-by-slide presenter narrative](slides/presenter_narrative.md) accompanies
+the main talk and the technical backup.
+
 For the live demo, run the setup once, then change `Settings(...)` and rerun the two
 scenario cells. The sweep, parameter table and repeated-history check take longer.
 There is no hidden model cache and no shared evaluation RNG; the same inputs produce

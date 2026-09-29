@@ -130,11 +130,11 @@
   \begin{itemize}
     \item $y_i$ chooses serviced wards; $x_{ij}$ chooses travel arcs.
     \item An open path starts at Township; at most $K$ wards receive service.
-    \item With embedding, $\widehat h_i=g(f_i,E_i(y))$ changes with the plan.
+    \item With embedding, $\widehat h_i=\max\{0,g(f_i,E_i(y))\}$ changes with the plan.
     \item The simulator benchmark approximates $h(\mu_i(y))$ from below.
   \end{itemize}
   \vspace{3mm}
-  Benchmark upper bound = solver bound + at most 0.5 dose-equivalent interpolation error. Route values use the exact expectation. Full path constraints are in the backup slides.
+  Benchmark upper bound = solver bound + at most 0.5 dose-equivalent interpolation error. Route values use the exact expectation. Complete models are in the backup slides.
 \end{frame}
 
 \begin{frame}{Environment for these results}
@@ -213,21 +213,126 @@
 
 \pdfstringdefDisableCommands{\def\translate#1{#1}}
 \appendix
-\begin{frame}{Backup: the open-path constraints}
+\begin{frame}{Backup: model notation and inputs}
+  \small
+  \begin{tabular}{lp{.76\textwidth}}
+    \toprule
+    Symbol & Meaning\\\midrule
+    $N,\ A$ & Wards; directed arcs $A=\{(i,j)\in N^2:i\ne j\}$.\\[1mm]
+    $s,\ d_{ij}$ & Township depot; directed shortest-road distance in km.\\[1mm]
+    $K,\ C,\ \lambda$ & Stop limit (8), capacity per stop (250), cost per km (1).\\[1mm]
+    $P_i,u_i,a_i$ & Population, simulated unvaccinated share, normalised hospital distance.\\[1mm]
+    $f_i,b_i$ & Features $f_i=(\log P_i,u_i,a_i)$; base demand $b_i=.02P_i u_i(.5+a_i)$.\\[1mm]
+    $R,\gamma,\sigma$ & Interaction range (10 km), spillover strength ($>\!-1$), noise (.15).\\
+    \bottomrule
+  \end{tabular}\par\vspace{3mm}
+  $x_{ij}\in\{0,1\}$ selects travel arcs; $y_i\in\{0,1\}$ selects service stops;
+  $z_i\ge0$ is modelled service. Exposure and predictor outputs are continuous auxiliaries.
+  \par\vspace{2mm}
+  The depot receives service and counts toward $K$. Capacity is per stop; there is no total vehicle-inventory constraint.
+\end{frame}
+
+\begin{frame}{Backup: complete routing and service formulation}
   \small
   \[
   \begin{aligned}
-    &y_s=1,\quad \sum_{i\ne s}x_{is}=0,\quad \sum_i y_i\le K,\\
-    &\sum_{j\ne i}x_{ji}=y_i && i\ne s,\\
-    &\sum_{j\ne i}x_{ij}\le y_i && i\in N,\\
-    &\sum_{i\ne j}x_{ij}=\sum_i y_i-1,\\
-    &\sum_{i,j\in S:i\ne j}x_{ij}\le\sum_{i\in S}y_i-y_k
-      &&S\subseteq N\setminus\{s\},\ k\in S.
+    \max\quad &\sum\nolimits_{i\in N}z_i-\lambda\sum\nolimits_{(i,j)\in A}d_{ij}x_{ij}\\
+    \text{s.t.}\quad &y_s=1,\quad \sum\nolimits_{i\ne s}x_{is}=0,\quad \sum\nolimits_i y_i\le K,\\
+    &\sum\nolimits_{j\ne i}x_{ji}=y_i && i\in N\setminus\{s\},\\
+    &\sum\nolimits_{j\ne i}x_{ij}\le y_i && i\in N,\\
+    &\sum\nolimits_{(i,j)\in A}x_{ij}=\sum\nolimits_i y_i-1,\\
+    &\sum\nolimits_{i,j\in S:i\ne j}x_{ij}\le\sum\nolimits_{i\in S}y_i-y_k
+      &&\varnothing\ne S\subseteq N\setminus\{s\},\ k\in S,\\
+    &0\le z_i\le Cy_i,\quad z_i\le\widehat h_i &&i\in N,\\
+    &x_{ij}\in\{0,1\},\quad y_i\in\{0,1\} &&(i,j)\in A,\ i\in N.
   \end{aligned}
   \]
-  The last family is generated lazily at integer incumbents. Following successor arcs from the depot identifies disconnected cycles. A one-stop depot route is feasible.
-  \vspace{3mm}
-  \weblink{https://mobook.github.io/MO-book/notebooks/04/08-traveling-salesman-problem.html}{MO-book: travelling salesman problem and lazy constraints}
+  \footnotesize The subtour family is added lazily. These constraints give one open path from $s$, including the one-stop route. The next slides define $\widehat h_i$ for every policy.
+\end{frame}
+
+\begin{frame}{Backup: exposure and policy-specific service}
+  \small
+  For embedded policies and the simulator benchmark, for every $i\in N$:
+  \[
+    w_{ii}=0,\quad w_{ij}=\exp\!\left(-\frac{d_{ij}+d_{ji}}{2R}\right),\quad
+    r_i=\sum_jw_{ij}y_j,\quad E_i=\min\{1,r_i\}.
+  \]
+  Bounds: $0\le r_i\le\max_k\sum_jw_{kj}$ and $0\le E_i\le1$.
+  \[
+    \widehat h_i=\begin{cases}
+      \max\{0,g(f_i,0)\}, &\text{static linear or MLP},\\[1mm]
+      \max\{0,g(f_i,E_i)\}, &\text{embedded linear or MLP},\\[1mm]
+      T^{-1}\sum_{t=1}^T S_{it}, &\text{historical mean}.
+    \end{cases}
+  \]
+  All policies also impose $z_i\le Cy_i$. Maximising $z_i$ therefore clips service to $[0,C]$ at visited wards and gives zero at unvisited wards.
+  \par\vspace{3mm}
+  In the static models these service bounds are precomputed constants. The embedded models impose the min/max relations as exact general constraints.
+\end{frame}
+
+\begin{frame}{Backup: the fitted predictor inside the model}
+  \small
+  For input $v_i=(f_i,e_i)\in\mathbb R^4$, with $e_i=0$ (static) or $E_i$ (embedded),
+  apply the fitted scaler: $t_{i\ell}=(v_{i\ell}-m_\ell)/s_\ell$, $\ell=1,\ldots,4$.
+  \par\vspace{2mm}
+  \textbf{Linear regression}
+  \[
+    q_i=\beta_0+\sum_{\ell=1}^4\beta_\ell t_{i\ell},\qquad
+    \widehat h_i=\max\{0,q_i\}.
+  \]
+  \textbf{One-hidden-layer ReLU network (default $H=8$)}
+  \[
+    a_{ih}=c_h+\sum_{\ell=1}^4B_{h\ell}t_{i\ell},\quad
+    v^+_{ih}=\max\{0,a_{ih}\},\qquad h=1,\ldots,H,
+  \]
+  \[
+    q_i=c_0+\sum_{h=1}^H\alpha_h v^+_{ih},\qquad
+    \widehat h_i=\max\{0,q_i\}.
+  \]
+  All scaler and predictor coefficients are fixed after training. Affine auxiliaries are real; ReLU and clipped outputs are nonnegative. The min/max constraints have exact mixed-integer representations in Gurobi.
+\end{frame}
+
+\begin{frame}{Backup: synthetic service and its expectation}
+  \small
+  For each ward and deployment, the teaching simulator specifies
+  \[
+    \mu_i=b_i(1+\gamma E_i),\qquad
+    \epsilon_i\sim\operatorname{LogNormal}(-\sigma^2/2,\sigma),\qquad
+    S_i=\min\{C,\mu_i\epsilon_i\}.
+  \]
+  For $\mu>0$ and $\sigma>0$, with $a=(\log(C/\mu)+\sigma^2/2)/\sigma$,
+  \[
+    h(\mu)=\mathbb E[\min\{C,\mu\epsilon\}]
+           =\mu\Phi(a-\sigma)+C\Phi(-a).
+  \]
+  Here $\Phi$ is the standard normal CDF. The limiting cases are
+  $h(0)=0$ and, for $\sigma=0$, $h(\mu)=\min\{C,\mu\}$.
+  \par\vspace{4mm}
+  The predictors are fitted to noisy capped outcomes $S_{it}$ from 1500 simulated
+  periods; 400 independent periods supply validation. Every ward has a potential
+  outcome in every period. Model fitting precedes routing; the routing solver does not retrain the predictor.
+\end{frame}
+
+\begin{frame}{Backup: simulator benchmark and route evaluation}
+  \small
+  Write $H_i(e)=h(b_i(1+\gamma e))$, using the expected capped service function.
+  On each interval $[e_{i\ell},e_{i,\ell+1}]$ of a grid covering $[0,1]$, set
+  \[
+    a_{i\ell}=\frac{H_i(e_{i,\ell+1})-H_i(e_{i\ell})}{e_{i,\ell+1}-e_{i\ell}},
+    \qquad c_{i\ell}=H_i(e_{i\ell})-a_{i\ell}e_{i\ell}.
+  \]
+  Keep all routing, exposure and capacity constraints. Replace the predictor bound by
+  \[
+    z_i\le a_{i\ell}E_i+c_{i\ell}\qquad\text{for every }i,\ell.
+  \]
+  Concavity makes the minimum of these lines a secant under-estimator of $H_i$.
+  When $\sigma=0$, use $z_i\le b_i(1+\gamma E_i)$ together with $z_i\le Cy_i$.
+  \par\vspace{2mm}
+  Evaluate every returned route $(x^*,y^*)$ with the same exact expected objective:
+  \[
+    F(x^*,y^*)=\sum_i y_i^*h\!\left(b_i(1+\gamma E_i(y^*))\right)
+              -\lambda\sum_{(i,j)\in A}d_{ij}x_{ij}^*.
+  \]
 \end{frame}
 
 \begin{frame}{Backup: a bound on benchmark interpolation}
