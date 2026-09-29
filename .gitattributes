@@ -4,3 +4,4 @@
 *.xlsx binary
 *.zip binary
 *.ipynb text eol=lf
+*.svg text eol=lf
