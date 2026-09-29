@@ -1,6 +1,6 @@
 # Predicting while optimizing: presenter narrative
 
-**Suggested use:** approximately 20 minutes for the main presentation, plus time for the live notebook. The title page is unnumbered; headings below follow the numbered slides. Backup explanations are optional. Italic text contains presenter cues; the remaining paragraphs can be spoken directly.
+**Suggested use:** approximately 25–30 minutes for the main presentation with the expanded formula explanations, plus time for the live notebook. For a shorter talk, omit the worked examples. The title page is unnumbered; headings below follow the numbered slides. Backup explanations are optional. Italic text contains presenter cues; the remaining paragraphs can be spoken directly. Equations in these notes support the explanation even where they are not printed on the main slide.
 
 ## Title page — Analytics for a Better World
 
@@ -36,19 +36,75 @@ We use distance to the nearest hospital as a simple measure of healthcare access
 
 These two maps show why the choice of facility source matters. Both selections contain six records, but they imply different distances from wards to the nearest selected facility. In this comparison, the average is about nine kilometres using the OSM selection and about 6.8 kilometres using the Maina hospital labels.
 
-That difference propagates into the accessibility feature and then into simulated demand. The optimisation can be internally consistent while still depending strongly on an upstream data choice. The comparison helps us see that dependence; it does not establish which records represent today's vaccine supply network.
+In the simulation, greater distance to a hospital increases base demand for a mobile clinic. The assumption is that wards with poorer access to existing facilities have more unmet need. We represent that assumption with
+
+$$
+a_i=\frac{\rho_i}{\max_k\rho_k},\qquad
+b_i=0.02\,P_i u_i(0.5+a_i).
+$$
+
+Here, rho is the road distance from the ward's representative road node to its nearest selected hospital. Dividing by the largest such distance in the county gives a relative inaccessibility score, a, between zero and one. A larger score means poorer access. P is the ward population and u is its simulated unvaccinated share, so their product is the simulated number of unvaccinated people.
+
+The factor 0.02 sets the scale of demand for a visit. The factor 0.5 plus a adjusts that scale for inaccessibility: it ranges from 0.5 at zero hospital distance to 1.5 at the greatest hospital distance. These coefficients are chosen for the teaching simulation; they are not estimated attendance rates. The resulting b is base mean demand before nearby visits, random variation and the service limit are applied.
+
+*Optional worked example; the numbers are illustrative, not an additional ward observation.*
+
+Take a ward with 20,000 people and an unvaccinated share of 40 percent. Their product is 8000, and two percent of that is 160. If the inaccessibility score is 0.25, base demand is 160 times 0.75, or 120 people. If the score is 0.75, with the other inputs unchanged, base demand is 160 times 1.25, or 200 people. That is the assumed effect of poorer hospital access.
+
+Changing the facility source changes the distances and can therefore change these scores and base demands. Because we normalise by the county maximum, the relative pattern matters: a proportional increase in every distance would leave the scores unchanged. The lower average distance in the Maina map does not by itself imply lower demand in every ward. The displayed routing experiments use the Maina hospital selection; the two maps illustrate an input choice rather than a complete routing comparison between the two sources.
+
+Hospital distance is fixed while the optimiser chooses a route. On the next slide, we introduce a second distance relationship: proximity to other mobile-clinic visits, whose effect depends on which wards we select.
 
 ## 5 — A bounded, set-based spillover
 
-We represent nearby activity through an exposure measure. Each other visited ward contributes a weight that decreases with distance, and total exposure is capped at one. The interaction range controls how quickly those weights decrease.
+We represent nearby mobile-clinic activity through an exposure measure:
 
-We then multiply base demand by one plus gamma times exposure. Negative gamma gives cannibalisation: nearby visits reduce turnout at a ward. Positive gamma gives mobilisation: nearby visits increase turnout.
+$$
+\bar d_{ij}=\frac{d_{ij}+d_{ji}}{2},\qquad
+w_{ij}=e^{-\bar d_{ij}/R}\ (i\ne j),\qquad
+E_i(y)=\min\left\{1,\sum_{j\ne i}w_{ij}y_j\right\}.
+$$
+
+Here, y sub j is one if ward j is selected for service and zero otherwise. A selected ward contributes to exposure at other wards, with a weight that decreases exponentially with their road distance. We average the two directed distances for this interaction, although the driving cost still uses the actual direction of travel. A ward does not contribute to its own exposure.
+
+The parameter R controls how far the influence extends. With R equal to ten kilometres, a visit ten kilometres away contributes about 0.37; one twenty kilometres away contributes about 0.14. This is a gradual decay, not a cutoff at ten kilometres. Contributions from multiple selected wards add up, and the cap at one prevents exposure from increasing without limit. For example, two visits each five kilometres away contribute about 0.61 each, giving a capped exposure of one.
+
+We then apply the same exposure measure in two alternative scenarios:
+
+$$
+\mu_i(y)=b_i\bigl(1+\gamma E_i(y)\bigr).
+$$
+
+For **cannibalisation**, gamma is negative. Nearby visits reduce mean demand at the ward. With gamma equal to minus 0.5, the multiplier falls from one at zero exposure to 0.5 at full exposure. This represents competition between nearby service opportunities.
+
+For **mobilisation**, gamma is positive. Nearby visits increase mean demand. With gamma equal to plus 0.5, the multiplier rises from one to 1.5. This represents a possible increase in participation through awareness or mobilisation around a cluster of visits.
+
+*Optional worked example connecting the two scenarios.*
+
+If base demand is 200 and exposure is 0.6, cannibalisation gives 200 times 0.7, or 140 people in mean demand. Mobilisation gives 200 times 1.3, or 260. These are demand values before applying noise and the 250-person service limit. At zero exposure both scenarios return to base demand.
+
+We run these as separate scenarios, each with one common gamma across the county. The simulation does not model both mechanisms simultaneously or estimate their strength from patient records. Awareness and competition motivate the signs; the mathematical mechanism is the exposure multiplier.
 
 This is a deliberately simple mechanism. The set of selected wards determines exposure. Changing their order changes driving distance but leaves demand unchanged. We are therefore modelling a deployment effect, without specifying a chronological process in which individual patients move between stops.
 
 ## 6 — Expected service includes the capacity limit
 
 Demand is uncertain, and a stop can serve at most 250 people. We add multiplicative noise with mean one and then apply this capacity limit.
+
+Putting the pieces together, potential service at ward i is
+
+$$
+S_i(y)=\min\left\{250,\;
+\underbrace{0.02P_i u_i(0.5+a_i)}_{\text{base demand}}
+\underbrace{(1+\gamma E_i(y))}_{\text{effect of nearby visits}}
+\underbrace{\epsilon_i}_{\text{random variation}}\right\}.
+$$
+
+Read that expression from left to right inside the capacity limit: population and hospital access establish base demand; the chosen deployment changes it through exposure; random variation changes turnout on the day; and capacity limits how many people can be served. We count this potential service in the route's total only when the ward is selected.
+
+The noise is lognormal, which keeps demand positive. Its logarithm has mean minus sigma squared over two and standard deviation sigma, with sigma set to 0.15. That adjustment makes the noise multiplier itself have mean one, so it does not systematically inflate the demand scale.
+
+In the mobilisation example, mean demand rose to 260, but the clinic cannot serve 260 people at a stop. Without noise it would serve 250. With noise, some days have demand below 250, so expected service is below 250. Increased demand can therefore produce a much smaller increase in expected service when capacity is already tight.
 
 The order matters. Expected service after a capacity limit is generally different from expected demand truncated at the capacity. If unusually high demand exceeds capacity, those extra patients cannot be served, while a low-demand day still reduces service.
 
@@ -60,6 +116,8 @@ We generate 1500 deployment periods for training and 400 independent periods for
 
 The simulation provides potential outcomes at every ward, even if a ward was not visited in that period. That is a strong information assumption, and it makes this a useful controlled teaching experiment.
 
+For each generated deployment we calculate exposure from its selected wards, apply the chosen gamma, draw the noise and cap service. We fit separate predictors for the cannibalisation and mobilisation scenarios. Their inputs are log population, the unvaccinated share, inaccessibility and exposure; their target is the simulated capped service. The predictors must learn that relationship from the examples. They are not given the simulator's demand formula as a constraint.
+
 With real clinic records we would normally observe less. Missing visits, capacity limits and the reasons particular routes were chosen would all affect what we can learn. Moving to real data therefore requires an identification strategy as well as a prediction algorithm.
 
 ## 8 — The same predictor, two ways to plan
@@ -68,6 +126,10 @@ This table is the central comparison. We fit a linear predictor and a small ReLU
 
 The static policy evaluates the predictor at zero exposure before solving the route. The embedded policy lets exposure respond to the selected wards during optimisation. Both use the same treatment of negative predictions and the same service capacity.
 
+This distinction is particularly useful for understanding the two effects. Under cannibalisation, zero exposure describes the absence of competing visits. Under mobilisation, it describes the absence of an attendance boost from nearby visits. The static policy keeps those forecasts fixed even when its route selects nearby wards. The embedded policy updates exposure within the model. Its response is whatever the fitted predictor has learned, which may differ from the simulator's exact response.
+
+Embedding therefore does not mean inserting the known gamma formula into the learned policy. The learned policy contains the fitted linear model or neural network. Only the simulator benchmark uses the known expected-service relationship directly.
+
 We also include a historical-average forecast for each ward. It is a useful simple comparator: the presence of decision dependence does not tell us in advance how much we gain from modelling it explicitly.
 
 ## 9 — Routing with decision-dependent service
@@ -75,6 +137,8 @@ We also include a historical-average forecast for each ward. It is a useful simp
 The objective rewards expected service and subtracts driving cost. Here, one kilometre costs one dose-equivalent. That coefficient expresses a trade-off chosen for the example; it is not an estimated programme valuation.
 
 The binary variables select stops and travel arcs. Service must be zero at unvisited wards and cannot exceed capacity. In the embedded model, the predictor's output changes with the selected stops, so the optimiser must consider their joint effect on service and travel.
+
+There are now three roles for distance. Distance to hospitals helps set fixed base demand. Distance between selected wards determines exposure and its effect on demand. Distance along the chosen travel arcs incurs a cost. Serving a poorly connected ward can therefore offer higher simulated need while also requiring more driving; selecting nearby wards can shorten travel while changing their turnout. The objective weighs these consequences together.
 
 We also solve a benchmark that knows the simulator's expected service function. Its approximation has a controlled error, which we add to the solver's bound. The full routing and predictor formulations are in the backup slides.
 
@@ -88,6 +152,8 @@ The point is reproducibility. These are teaching results from one machine, with 
 
 *Point first to the two MLP rows, then to the linear and historical rows.*
 
+Here gamma is minus 0.5. Increasing exposure reduces mean demand, by at most half of base demand at full exposure. This gives the model an incentive to avoid overlapping service opportunities, but that incentive competes with travel cost, differences in base demand and the capacity limit. It does not imply that the best route always selects the most widely separated wards.
+
 With negative spillover, the static neural-network policy serves about 1541 expected doses and drives 73.1 kilometres. Embedding that same network changes the plan to about 1614.7 doses and 78.9 kilometres. The objective rises from 1467.9 to 1535.8. We gain service and also do more driving.
 
 Now look at the other rows. The static linear policy, the embedded linear policy and the historical mean achieve the same displayed expected objective as the benchmark route. The benchmark places the optimum between 1535.83 and 1536.23.
@@ -95,6 +161,8 @@ Now look at the other rows. The static linear policy, the embedded linear policy
 So embedding helps this neural-network comparison, but it is not necessary to obtain a very good decision in this particular instance. We should explain the pattern the experiment produces, rather than assume that the most elaborate policy must win.
 
 ## 12 — Mobilisation: a benefit is not guaranteed
+
+Here gamma is plus 0.5. Exposure increases mean demand, by up to half of base demand at full exposure. Nearby visits can reinforce one another, and a geographically compact selection may also save travel. However, the exposure cap and the 250-dose service cap limit the benefit of additional nearby visits. This model does not reward clustering indefinitely.
 
 With positive spillover, embedding improves the objective for both fitted predictors in this run. The linear comparison rises from about 1820.8 to 1827.3; the neural-network comparison rises from 1809.5 to 1822.9.
 
@@ -114,6 +182,8 @@ These are open paths, even when a map looks roughly circular. There is no requir
 
 So far we have examined two choices of gamma. The sweep asks how the comparisons change across a wider range of assumed interactions.
 
+Moving left from zero makes the exposure penalty stronger; moving right makes the exposure benefit stronger. At gamma equal to zero, mean demand equals base demand whatever wards are selected, so the simulator has no spillover effect. Any remaining sensitivity of a fitted predictor to exposure at that setting comes from fitting error rather than a true interaction in the simulator. The sweep holds the interaction range fixed: gamma changes the sign and strength, not the geographic decay of exposure.
+
 At strongly negative spillover the policies separate substantially. Around zero and for positive spillover they are much closer on this scale. We use matched training histories at each strength, and evaluate every route with the same expected-service calculation. The narrow benchmark band represents numerical optimisation and interpolation uncertainty.
 
 That band is not a confidence interval for the real-world effect. Gamma itself is an assumption in this experiment. This plot tells us how the model behaves when we change that assumption.
@@ -123,6 +193,8 @@ That band is not a confidence interval for the real-world effect. Gamma itself i
 *Pause for the audience's prediction before changing a parameter. Use one experiment if time is short.*
 
 First, suppose we shorten the interaction range. Which wards will still affect each other, and how might that change our preferred stops? Think separately about doses, kilometres and the weighted objective.
+
+For the same selected wards, reducing R decreases the distance weights and can reduce exposure. At a distance of ten kilometres, the contribution is about 0.14 when R is five, 0.37 when R is ten, and 0.61 when R is twenty. Thus a shorter range can weaken the cannibalisation penalty in the negative scenario and the mobilisation benefit in the positive scenario. If the weighted sum still reaches the exposure cap, that ward's exposure stays at one. These statements hold for a fixed deployment; after reoptimisation, the route itself may change. Hospital inaccessibility and base demand stay fixed during this experiment.
 
 Next, change the maximum number of stops. We are allowing more stops, not requiring them. For the exact benchmark, expanding the feasible set cannot reduce the optimal weighted objective, although the selected route and its distance can change.
 
