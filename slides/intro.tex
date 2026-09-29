@@ -9,7 +9,15 @@
 \usepackage{graphicx}
 \usepackage{hyperref}
 \setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{footline}[frame number]
+\definecolor{linkblue}{RGB}{0,84,166}
+% recognisable hyperlinks: blue and underlined, also when printed
+\newcommand{\weblink}[2]{\href{#1}{\textcolor{linkblue}{\underline{#2}}}}
+\setbeamertemplate{footline}{%
+  \hbox to \paperwidth{\hspace{3mm}%
+    \raisebox{-0.3mm}{\includegraphics[height=3.6mm]{figs/logo_abw.png}}\hspace{5mm}%
+    \includegraphics[height=2.6mm]{figs/logo_uva.pdf}\hfill
+    {\tiny\insertframenumber\,/\,\inserttotalframenumber}\hspace{3mm}}\vspace{1.5mm}}
+\titlegraphic{\includegraphics[height=10mm]{figs/logo_abw.png}\hspace{14mm}\raisebox{2mm}{\includegraphics[height=6mm]{figs/logo_uva.pdf}}}
 \setbeamerfont{frametitle}{series=\bfseries}
 
 \title{Analytics for a Better World}
@@ -20,15 +28,15 @@
 
 \begin{document}
 
-\begin{frame}
+\begin{frame}[plain,noframenumbering]
   \titlepage
 \end{frame}
 
 % ---------------------------------------------------------------- hook
 \begin{frame}{Same history, same solver, same number of stops}
   \centering
-  \includegraphics[width=\textwidth]{figs/routes_top.png}
-  \vspace{2mm}
+  \includegraphics[width=0.94\textwidth]{figs/routes_top.png}
+  \vspace{1mm}
   \begin{block}{}
     \centering Left: 1892 doses promised, 1374 delivered. \quad Middle: 1664 promised, 1621 delivered. \quad Why?
   \end{block}
@@ -96,13 +104,13 @@
       \toprule
       Ingredient & Source \\
       \midrule
-      Ward boundaries & GADM 4.1, level 3 \\
-      Population per ward & WorldPop 2020, 1 km, UN-adjusted \\
-      Road network & OpenStreetMap through \texttt{osmnx} \\
-      Health facilities, geocoded & Maina et al.\ (2019), \emph{Scientific Data} 6:134, CC0 \\
+      Ward boundaries & \weblink{https://gadm.org/}{GADM} 4.1, level 3 \\
+      Population per ward & \weblink{https://www.worldpop.org/}{WorldPop} 2020, 1 km, UN-adjusted \\
+      Road network & \weblink{https://www.openstreetmap.org/}{OpenStreetMap} through \texttt{osmnx} \\
+      Health facilities, geocoded & \weblink{https://doi.org/10.1038/s41597-019-0142-2}{Maina et al.\ (2019)}, \emph{Scientific Data} 6:134, CC0 \\
       Road distances between wards & \texttt{pandana} contraction hierarchies, 20 by 20 in milliseconds \\
       Demand & simulator above, both signs of $\gamma$ \\
-      Optimization & Gurobi, under the free Community Edition limit \\
+      Optimization & Gurobi with \weblink{https://github.com/Gurobi/gurobi-machinelearning}{gurobi-machinelearning}, free licence size \\
       \bottomrule
     \end{tabular}
   \end{center}
@@ -188,7 +196,7 @@
   & \sum_{i,j \in S} x_{ij} & \le & \sum_{i \in S} y_i - y_k & \forall S \subseteq N \setminus \{s\},\ k \in S \quad \text{DFJ, lazy}
   \end{array}
   \]
-  The DFJ family is generated in a \texttt{MIPSOL} callback with \texttt{cbLazy}: follow the successors from the depot, every visited ward not reached lies on a cycle $S$. Details and the MTZ comparison: MO-book, \href{https://mobook.github.io/MO-book/notebooks/04/08-traveling-salesman-problem.html}{Traveling Salesman Problem}.
+  The DFJ family is generated in a \texttt{MIPSOL} callback with \texttt{cbLazy}: follow the successors from the depot, every visited ward not reached lies on a cycle $S$. Details and the MTZ comparison: MO-book, \weblink{https://mobook.github.io/MO-book/notebooks/04/08-traveling-salesman-problem.html}{Traveling Salesman Problem}.
 \end{frame}
 
 % ---------------------------------------------------------------- model
@@ -263,7 +271,7 @@
 
   \vspace{3mm}
   \begin{block}{Try it yourself, now or later}
-    \centering \url{https://github.com/gromicho/mobile_clinics}\\ Open in Colab from the README. No installation needed.
+    \centering \weblink{https://github.com/gromicho/mobile_clinics}{github.com/gromicho/mobile\_clinics}\\[1mm] \weblink{https://colab.research.google.com/github/gromicho/mobile_clinics/blob/main/mobile_clinic_routing.ipynb}{Open the notebook in Colab}. No installation needed.
   \end{block}
 \end{frame}
 
@@ -279,7 +287,7 @@
     In a real deployment, where does the training data with decisions in it come from, and how many periods are needed before the learned constraints beat a careful static forecast?
   \end{block}
   \vspace{4mm}
-  \small Notebook and code: \texttt{mobile\_clinic\_routing.ipynb}. Thesis: M.\ Ghosh, \emph{Domain Driven Analytics}, University of Amsterdam, Chapter 6.
+  \small Notebook, data and slides: \weblink{https://github.com/gromicho/mobile_clinics}{github.com/gromicho/mobile\_clinics}. Thesis: M.\ Ghosh, \emph{Domain Driven Analytics}, University of Amsterdam, Chapter 6.
 \end{frame}
 
 \end{document}
