@@ -30,7 +30,7 @@ We combine boundaries, population, roads and facility locations. Each source ans
 
 The demand mechanism comes from a simulation. We generate an unvaccinated share and specify how accessibility and nearby visits influence turnout.
 
-There is a useful distinction here between a recorded attribute and an operational fact. A facility labelled as a hospital gives us an accessibility proxy. That label alone does not establish its current vaccine-storage capability. We should keep that distinction visible when interpreting the results.
+We use distance to the nearest hospital as a simple measure of healthcare accessibility. The dataset does not record vaccine-storage capacity, so an operational application would need to verify where vaccines can actually be collected.
 
 ## 4 — Facility selection changes the accessibility proxy
 
