@@ -17,18 +17,29 @@ Embedding can improve a decision, but the example does not assume it always wins
 
 ## Run
 
-In Colab, open the badge and run top to bottom. Setup installs the tested package
-versions and obtains the `siks-2026-09` source snapshot. GADM boundaries download
+In Colab, open the badge and run top to bottom. Setup obtains the published `main`
+branch and installs the latest stable runtime packages, with only API minimums.
+It leaves Colab's notebook kernel tools in place. If setup replaces existing
+packages, it stops with a restart instruction: choose **Runtime → Restart session**,
+then **Run all**. This keeps newly installed packages while clearing stale NumPy
+and other compiled-library imports. Do not factory-reset the runtime. GADM boundaries download
 automatically from their publisher into an ignored local cache. Internet access is
 required for that initial download and the online map backgrounds; no API keys are
 needed. The interactive map uses normal Folium/Esri online loading.
 
-Locally, use Python 3.12 in a virtual environment:
+Locally, use Python 3.12 or 3.13 in a virtual environment:
 
 ```sh
-python -m pip install -r requirements.txt
+python -m pip install --upgrade -r requirements-dev.txt
 python scripts/execute_notebook.py
 ```
+
+For the exact direct-package versions used for the recorded slides, use Python
+3.12 and `python -m pip install -r requirements-reproducible.txt` instead.
+Those versions are preserved for reproduction; normal setup does not force them.
+New runs record their actual versions in `results/environment.json` and may differ
+from the saved presentation results. CI checks the latest stable dependencies on
+both Python 3.12 and 3.13.
 
 The maintained notebook has stable cell IDs and no saved outputs. Full execution
 writes its executed copy under ignored `build/`, full-precision results under
@@ -85,7 +96,7 @@ facility comparison and Beamer build; install `pdflatex` to rebuild the PDF.
 `slides/content.tex` contains editable slide content; `scripts/build_deck.py`
 generates its tables and environment statement from the notebook's actual results.
 
-The GitHub workflow uses Linux/Python 3.12 and the restricted licence bundled with
+The GitHub workflow is configured for Linux/Python 3.12 and 3.13 and the restricted licence bundled with
 `pip install gurobipy`. It first verifies that this licence really rejects a model
 above its size limit, then runs the small-instance tests and every notebook cell.
 The test is not a substitute for opening the actual Google Colab UI. An existing
@@ -96,8 +107,9 @@ teaching model-size budget receive a clear error.
 `results/environment.json` records hardware, package versions, source/input hashes,
 seeds, solver settings and timing scope. Each run records its own environment;
 historical timings are not reassigned to today's machine. No cross-machine speedup
-claim is made. Direct dependency versions are pinned, and the run manifest records
-the resolved scientific environment.
+claim is made. Normal setup permits latest stable dependencies; exact versions for
+the recorded slides are retained in requirements-reproducible.txt. Each new run
+records the versions actually used in its manifest.
 
 ## Files and licences
 

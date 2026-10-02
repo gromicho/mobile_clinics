@@ -24,7 +24,9 @@ We compare each predictor used before optimisation with the **same predictor**
 embedded inside it. A historical-mean forecast and a simulator benchmark provide
 additional comparisons. The objective is expected doses served minus driving cost.
 
-Run top to bottom. Internet is needed for the initial GADM download and map
+Run top to bottom. If setup asks for a restart after replacing packages, choose
+**Runtime → Restart session**, then **Run all**. Do not factory-reset the runtime:
+the installed packages should stay in place. Internet is needed for the initial GADM download and map
 backgrounds. GADM is downloaded locally for academic use under
 [its terms](https://gadm.org/license.html), not redistributed. See
 [DATA_SOURCES.md](https://github.com/gromicho/mobile_clinics/blob/main/DATA_SOURCES.md)
@@ -34,20 +36,40 @@ for versions, provenance and licences.
 import os, subprocess, sys
 from pathlib import Path
 
-# Colab gets the matching published snapshot. Locally install requirements.txt.
-REPO_REF = "siks-2026-09"
+# Colab gets the published main branch and latest stable runtime dependencies.
+REPO_REF = "main"
 if not Path("clinic_routing.py").exists():
-    checkout = Path("_mobile_clinics")
+    checkout = Path("_mobile_clinics_main")
     if not checkout.exists():
         subprocess.run(["git", "clone", "--depth", "1", "--branch", REPO_REF,
                         "https://github.com/gromicho/mobile_clinics.git", str(checkout)], check=True)
     os.chdir(checkout)
 if "google.colab" in sys.modules:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements.txt"])
+    import json, tempfile
+    from importlib.metadata import distributions
+    # Colab preloads libraries. Replacing them on disk does not unload their
+    # old Python modules or compiled extensions from this running kernel.
+    installed_before = {d.metadata["Name"].lower().replace("_", "-") for d in distributions()
+                        if d.metadata["Name"]}
+    with tempfile.TemporaryDirectory() as temp:
+        report = Path(temp) / "install-report.json"
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "--upgrade",
+                               "--report", str(report), "-r", "requirements.txt"])
+        replaced = sorted({item["metadata"]["name"].lower().replace("_", "-")
+                           for item in json.loads(report.read_text())["install"]}
+                          & installed_before)
+    # Keep this flag set if setup is rerun without actually restarting.
+    _COLAB_RESTART_REQUIRED = globals().get("_COLAB_RESTART_REQUIRED", False) or bool(replaced)
+    if _COLAB_RESTART_REQUIRED:
+        raise RuntimeError("Setup replaced installed packages. Choose Runtime > Restart session, "
+                           "then Run all. Do not factory-reset the runtime. "
+                           "A restart is needed before importing NumPy and the geographic libraries.")
 sys.path.insert(0, str(Path.cwd()))
 print("Source commit:", subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip())
 """)
     code("imports", r"""
+if globals().get("_COLAB_RESTART_REQUIRED", False):
+    raise RuntimeError("Choose Runtime > Restart session, then Run all before importing packages.")
 from dataclasses import replace
 import numpy as np
 import pandas as pd
@@ -109,7 +131,7 @@ wards.plot(column="pop", cmap="YlOrRd", alpha=.55, edgecolor="grey", ax=ax, lege
 basemap(ax)
 facilities.plot(ax=ax, color="dimgray", markersize=7, label="Facility record")
 hospitals.plot(ax=ax, color="tab:blue", marker="P", markersize=65, label="Hospital proxy")
-ax.scatter(wards.lon[start], wards.lat[start], marker="*", s=130, color="red", label="Teaching depot")
+ax.scatter(wards.lon[start], wards.lat[start], marker="*", s=130, color="red", label="Starting point")
 ax.set_title("Nyamira: population and historical facility locations")
 ax.set_axis_off(); ax.legend(loc="lower left", fontsize=8)
 fig.text(.02, .01, "Boundaries: GADM 4.1; population: WorldPop; facilities: Maina et al. 2019", fontsize=7)
@@ -243,7 +265,9 @@ for policy, frame in sweep.groupby("policy", sort=False):
 bench = sweep[sweep.policy.eq("benchmark")]
 ax.fill_between(bench.gamma, bench.expected_objective, bench.expected_objective_upper_bound,
                 alpha=.2, color="black", label="Benchmark bound interval")
-ax.set(xlabel="Spillover strength gamma", ylabel="Expected doses minus driving cost")
+ax.set(ylabel="Expected doses minus driving cost")
+for x, label in [(-.8, "Cannibalisation"), (0, "No interaction"), (.8, "Mobilisation")]:
+    ax.text(x, -.12, label, transform=ax.get_xaxis_transform(), ha="center", va="top")
 ax.legend(fontsize=8, ncol=2); ax.grid(alpha=.2); fig.tight_layout(); save_figure(fig, "sweep.png")
 display(sweep.pivot(index="gamma", columns="policy", values="expected_objective").round(2))
 """)

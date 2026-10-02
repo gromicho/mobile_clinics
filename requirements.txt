@@ -1,23 +1,22 @@
-# Tested Python 3.12 teaching environment. Transitive versions are recorded per run.
-osmnx==2.1.1
-pandana==0.8
-geopandas==1.2.0
-rasterio==1.5.1
-shapely==2.1.2
-networkx==3.7
-scikit-learn==1.9.1
-folium==0.20.0
-matplotlib==3.11.2
-pandas==3.0.6
-numpy==2.5.3
-scipy==1.18.1
-gurobipy==13.0.3
-gurobi-machinelearning==1.7.0
-nbformat==5.11.1
-nbclient==0.11.0
-ipykernel==7.3.0
-openpyxl==3.1.5
-contextily==1.7.1
-psutil==7.2.2
-py-cpuinfo==9.0.0
-threadpoolctl==3.7.0
+# Runtime dependencies: permit latest stable releases; no exact or upper pins.
+# Minimums cover the APIs used here. Recorded slide versions are kept separately
+# in requirements-reproducible.txt. Use --upgrade to update an existing environment.
+osmnx>=2
+pandana>=0.8
+geopandas>=1
+rasterio
+shapely>=2
+networkx
+scikit-learn>=1.7
+folium
+matplotlib
+pandas
+numpy
+scipy
+gurobipy>=13
+gurobi-machinelearning>=1.7
+openpyxl
+contextily
+psutil
+py-cpuinfo
+threadpoolctl

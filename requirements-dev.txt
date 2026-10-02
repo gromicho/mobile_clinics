@@ -1,0 +1,5 @@
+# Local execution and validation tools; Colab already supplies its own kernel.
+-r requirements.txt
+nbformat
+nbclient
+ipykernel
